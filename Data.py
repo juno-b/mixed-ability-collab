@@ -67,16 +67,16 @@ class IVTData:
         self.amplitudes.append(angular_distance)
         print('angular distance:', angular_distance, "point1:", [point1.x, point1.y], "point2", [point2.x, point2.y], "user_origin:", [user_origin.x, user_origin.y, user_origin.z])
 
-        eye_distance = user_origin.z
-        vertical_height = abs(point1.y-point2.y)
-        horizontal_distance = abs(point1.x - point2.x)
-        diagonal_distance = math.sqrt(vertical_height**2 + horizontal_distance**2)
-        angular_distance_rad = math.atan(diagonal_distance / eye_distance)
-        angular_distance_deg = math.degrees(angular_distance_rad)
-        print("Angular Distance:", angular_distance_deg)
+        #eye_distance = user_origin.z
+        #vertical_height = abs(point1.y-point2.y)
+        #horizontal_distance = abs(point1.x - point2.x)
+        #diagonal_distance = math.sqrt(vertical_height**2 + horizontal_distance**2)
+        #angular_distance_rad = math.atan(diagonal_distance / eye_distance)
+        #angular_distance_deg = math.degrees(angular_distance_rad)
+        #print("Angular Distance:", angular_distance_deg)
 
         try:
-            velocity = angular_distance_deg / ((time2-time1) / 1000000)
+            velocity = angular_distance / ((time2-time1) / 1000000)
             print('window', self.window, 'sum', sum(self.amplitudes), 'velocity', velocity)
             self.gaze_datas[self.buffer[0]].velocity = velocity
         except ZeroDivisionError:
