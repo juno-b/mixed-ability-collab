@@ -103,10 +103,10 @@ def interpolateData(dominantEye):
         gaze_point = None
         #Determine if there is data available from the dominant eye
         #use this to set gaze_point as the point on the display area from the appropriate eye
-        if (dominantEye == 'left') & (gaze_data['left_gaze_point_validity'] == 1):
+        if (dominantEye == 'left') & (gaze_data['left_gaze_point_validity'] == 1) & (not math.isnan(gaze_data['left_gaze_point_on_display_area'][0])):
                 gaze_point = [gaze_data['left_gaze_point_on_display_area'], gaze_data['left_gaze_origin_in_trackbox_coordinate_system'], gaze_data['left_gaze_origin_in_user_coordinate_system']]
                 interpolatedGazeData[i]['selected_eye'] = 'left'
-        elif (gaze_data['right_gaze_point_validity'] == 1):
+        elif (dominantEye == 'right') & (gaze_data['right_gaze_point_validity'] == 1) & (not math.isnan(gaze_data['right_gaze_point_on_display_area'][0])):
                 gaze_point = [gaze_data['right_gaze_point_on_display_area'], gaze_data['right_gaze_origin_in_trackbox_coordinate_system']], gaze_data['right_gaze_origin_in_user_coordinate_system']
                 interpolatedGazeData[i]['selected_eye'] = 'right'
         if gaze_point is not None:

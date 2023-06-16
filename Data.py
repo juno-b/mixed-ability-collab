@@ -35,6 +35,7 @@ VELOCITY_COLUMNS = ['number of velocities',
 
 def set_user_origin(user):
     global user_origin
+    print('user origin changed from:',user_origin,'to',user)
     user_origin = user
 
 class IVTData:
