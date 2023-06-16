@@ -103,20 +103,12 @@ def interpolateData(dominantEye):
         gaze_point = None
         #Determine if there is data available from the dominant eye
         #use this to set gaze_point as the point on the display area from the appropriate eye
-        if dominantEye == 'left':
-            if gaze_data['left_gaze_point_validity'] == 1:
+        if (dominantEye == 'left') & (gaze_data['left_gaze_point_validity'] == 1):
                 gaze_point = [gaze_data['left_gaze_point_on_display_area'], gaze_data['left_gaze_origin_in_trackbox_coordinate_system'], gaze_data['left_gaze_origin_in_user_coordinate_system']]
                 interpolatedGazeData[i]['selected_eye'] = 'left'
-            elif gaze_data['right_gaze_point_validity'] == 1:
-                gaze_point = [gaze_data['right_gaze_point_on_display_area'], gaze_data['right_gaze_origin_in_trackbox_coordinate_system'], gaze_data['right_gaze_origin_in_user_coordinate_system']]
-                interpolatedGazeData[i]['selected_eye'] = 'right'
-        else:
-            if gaze_data['right_gaze_point_validity'] == 1:
+        elif (gaze_data['right_gaze_point_validity'] == 1):
                 gaze_point = [gaze_data['right_gaze_point_on_display_area'], gaze_data['right_gaze_origin_in_trackbox_coordinate_system']], gaze_data['right_gaze_origin_in_user_coordinate_system']
                 interpolatedGazeData[i]['selected_eye'] = 'right'
-            elif gaze_data['left_gaze_point_validity'] == 1:
-                gaze_point = [gaze_data['left_gaze_point_on_display_area'], gaze_data['left_gaze_origin_in_trackbox_coordinate_system']], gaze_data['left_gaze_origin_in_user_coordinate_system']
-                interpolatedGazeData[i]['selected_eye'] = 'left'
         if gaze_point is not None:
             if prev_valid_index is not None:
                 prev_valid_gaze_data = interpolatedGazeData[prev_valid_index]
@@ -202,42 +194,28 @@ def classify_gaze_data(gaze_datas, frequency, threshold):
 def apply_ivt_filter(dominantEye):
     interpolatedGazeData = interpolateData(dominantEye)
     filtered_data_list = []
-    #prev_valid_timestamp = interpolatedGazeData[0]['device_time_stamp']
-    #prev_position = None
-    if (dominantEye == 'left') & interpolatedGazeData[0]['left_gaze_origin_validity'] == 1:
-        prev_position = interpolatedGazeData[0]['left_gaze_origin_in_trackbox_coordinate_system']
-    elif (dominantEye == 'right') & interpolatedGazeData[0]['right_gaze_origin_validity'] == 1:
-        prev_position = interpolatedGazeData[0]['right_gaze_origin_in_trackbox_coordinate_system']
-    
     parsed_data = []
     for i, gaze_data in enumerate(interpolatedGazeData):
         user_pos, screen_pos = None, None
-
         #determine x, y, and z in the trackbox system as a tuple position
         if dominantEye == 'left':
             if gaze_data['left_gaze_origin_validity'] == 1:
-                position = gaze_data['left_gaze_origin_in_trackbox_coordinate_system']
                 user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
                 screen_pos = gaze_data['left_gaze_point_on_display_area']
-            elif gaze_data['right_gaze_origin_validity'] == 1:
-                position = gaze_data['right_gaze_origin_in_trackbox_coordinate_system']
-                user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
-                screen_pos = gaze_data['right_gaze_point_on_display_area']
+            #elif gaze_data['right_gaze_origin_validity'] == 1:
+                #user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
+                #screen_pos = gaze_data['right_gaze_point_on_display_area']
             elif gaze_data['inter_gaze_origin_validity'] == 1:
-                position = gaze_data['inter_gaze_origin_in_trackbox_coordinate_system']
                 user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
                 screen_pos = gaze_data['inter_gaze_point_on_display_area']
         else:
             if gaze_data['right_gaze_origin_validity'] == 1:
-                position = gaze_data['right_gaze_origin_in_trackbox_coordinate_system']
                 user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
                 screen_pos = gaze_data['right_gaze_point_on_display_area']
-            elif gaze_data['left_gaze_origin_validity'] == 1:
-                position = gaze_data['left_gaze_origin_in_trackbox_coordinate_system']
-                user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
-                screen_pos = gaze_data['left_gaze_point_on_display_area']
+            #elif gaze_data['left_gaze_origin_validity'] == 1:
+                #user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
+                #screen_pos = gaze_data['left_gaze_point_on_display_area']
             elif gaze_data['inter_gaze_origin_validity'] == 1:
-                position = gaze_data['inter_gaze_origin_in_trackbox_coordinate_system']
                 user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
                 screen_pos = gaze_data['inter_gaze_point_on_display_area']
 
