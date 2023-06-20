@@ -126,9 +126,12 @@ Project Link: [https://github.com/juno-b/mixed-ability-collab](https://github.co
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-Veronica Lin \n
-Joon Jang \n
-Andrew Begel \n
+Veronica Lin
+
+Joon Jang
+
+[Andrew Begel](https://https://github.com/abegel)
+
 Created at the Carnegie Mellon University VariAbility Lab
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
