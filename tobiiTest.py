@@ -44,6 +44,7 @@ gaze_data_list, left_x, left_y, right_x, right_y, inter_x, inter_y, centroids_x,
 velocity_threshold = 30  # ADJUST AS NEEDED
 time_75 = 75000          # 75 ms to microseconds
 time_60 = 60000          # 60 ms to microseconds
+window_size_seconds = 10 / 1000 #10 ms on either side of the window converted to seconds
 
 #Switch based on the dominant eye of the participant
 dominantEye = 'left'
@@ -64,7 +65,7 @@ def append_pixel_data():
 #This function writes data to a csv file. Additional data column header values should be added to headers/headers2.extend as necessary
 def write_to_csv(data_to_write, combined_fixation_data):
     #main data csv
-    headers = list(data_to_write[0].keys())
+    headers = list(data_to_write[1].keys())
     headers.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system'])
     with open('output.csv', 'w', newline = '') as file:
         writer = csv.DictWriter(file, fieldnames=headers)
@@ -74,19 +75,19 @@ def write_to_csv(data_to_write, combined_fixation_data):
     #combined fixations csv
     #headers2 = list(combined_fixation_data[0].keys())
     #headers2.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system'])#, 'time_fixation_ended'])
-    headers2 = list(['id', 'time', 'velocity', 'type', 'point'])
-    with open('combined_fixations.csv', 'w', newline = '') as file2:
-        writer = csv.DictWriter(file2, fieldnames=headers2)
-        writer.writeheader()
-        for gaze_data in combined_fixation_data:
-            data_dict = {
-                'id': gaze_data.id,
-                'time': gaze_data.time,
-                'velocity': gaze_data.velocity,
-                'type': gaze_data.movement_type,
-                'point': gaze_data.point.to_tuple()
-            }
-            writer.writerow(data_dict)
+    #headers2 = list(['id', 'time', 'velocity', 'type', 'point'])
+    #with open('combined_fixations.csv', 'w', newline = '') as file2:
+        #writer = csv.DictWriter(file2, fieldnames=headers2)
+        #writer.writeheader()
+        #for gaze_data in combined_fixation_data:
+            #data_dict = {
+                #'id': gaze_data.id,
+                #'time': gaze_data.time,
+                #'velocity': gaze_data.velocity,
+                #'type': gaze_data.movement_type,
+                #'point': gaze_data.point.to_tuple()
+            #}
+            #writer.writerow(data_dict)
 
 #This function opens te eye tracker for the specified duration and then closes the connection
 def run_eyetracker(duration):
@@ -100,6 +101,7 @@ def interpolateData(dominantEye):
     prev_valid_index = None
     for i, gaze_data in enumerate(gaze_data_list):
         interpolatedGazeData[i]['inter_gaze_origin_validity'] = 0
+        interpolatedGazeData[i]['index'] = i
         gaze_point = None
         #Determine if there is data available from the dominant eye
         #use this to set gaze_point as the point on the display area from the appropriate eye
@@ -191,10 +193,36 @@ def classify_gaze_data(gaze_datas, frequency, threshold):
     #ivt_data.sort_velocities()
     return ivt_data.gaze_datas, ivt_data.velocities
 
+#adds the index of the point within the window furthest before (window_1) and after (window_2) each gaze point
+def find_points_in_window(gaze_points):
+    # Loop over the gaze points
+    for i, gaze_point in enumerate(gaze_points):
+        current_time = gaze_point['system_time_stamp']  / 1000000
+        
+        # Find the point before the current point
+        for j in range(i-1, -1, -1):
+            time_diff = current_time - (gaze_points[j]['system_time_stamp'] / 1000000)
+            if time_diff <= window_size_seconds:
+                gaze_point['window_1'] = gaze_points[j]['index']
+            else:
+                break
+
+        # Find the point after the current point
+        for k in range(i+1, len(gaze_points)):
+            time_diff = (gaze_points[k]['system_time_stamp'] / 1000000) - current_time
+            if time_diff <= window_size_seconds:
+                gaze_point['window_2'] = gaze_points[k]['index']
+            else:
+                break   
+    return gaze_points
+
+#calls the interpolateData, find_points_in_window, and gaze_angle functions. Uses this data in calculate_velocity and filters the
+#points to centroids. Reduces the centroids within a time window.
 def apply_ivt_filter(dominantEye):
     interpolatedGazeData = interpolateData(dominantEye)
     filtered_data_list = []
     parsed_data = []
+    interpolatedGazeData = find_points_in_window(interpolatedGazeData)
     for i, gaze_data in enumerate(interpolatedGazeData):
         user_pos, screen_pos = None, None
         #determine x, y, and z in the trackbox system as a tuple position
@@ -218,27 +246,29 @@ def apply_ivt_filter(dominantEye):
             elif gaze_data['inter_gaze_origin_validity'] == 1:
                 user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
                 screen_pos = gaze_data['inter_gaze_point_on_display_area']
+ 
+        #if((screen_pos is not None) & (user_pos is not None)):
+            #find_points_in_window
+            #user_p3d = Point3D(user_pos[0], user_pos[1], user_pos[2])
+            #set_user_origin(user_p3d)
+            #parsed_data.append(GazeData(i, gaze_data['device_time_stamp'], None, Point3D(screen_pos[0]*width, screen_pos[1]*height, user_pos[2])))
 
-        if((screen_pos is not None) & (user_pos is not None)):
-            user_p3d = Point3D(user_pos[0], user_pos[1], user_pos[2])
-            set_user_origin(user_p3d)
-            parsed_data.append(GazeData(i, gaze_data['device_time_stamp'], None, Point3D(screen_pos[0]*width, screen_pos[1]*height, user_pos[2])))
 
     #calculate moving window velocity for each point
-    classified_data, velocities = classify_gaze_data(parsed_data, FREQUENCY, BASIC_THRESHOLD)
-    analyzed_data = AnalyzedData(classified_data, velocities)
-    analyzed_data.init_datas()
-    iterator = 0
-    for vel in velocities:
-        iterator += 1
-    print("i:", iterator)
-    print("# centroids:", len(analyzed_data.centroids))
-    for cen in analyzed_data.centroids:
-        centroids_x.append(cen.x)
-        centroids_y.append(cen.y)
-        print("centroid:", [cen.x, cen.y])
+    #classified_data, velocities = classify_gaze_data(parsed_data, FREQUENCY, BASIC_THRESHOLD)
+    #analyzed_data = AnalyzedData(classified_data, velocities)
+    #analyzed_data.init_datas()
+    #iterator = 0
+    #for vel in velocities:
+        #iterator += 1
+    #print("i:", iterator)
+    #print("# centroids:", len(analyzed_data.centroids))
+    #for cen in analyzed_data.centroids:
+        #centroids_x.append(cen.x)
+        #centroids_y.append(cen.y)
+        #print("centroid:", [cen.x, cen.y])
   
-    return filtered_data_list, interpolatedGazeData, classified_data, analyzed_data
+    return filtered_data_list, interpolatedGazeData, interpolatedGazeData, interpolatedGazeData#classified_data, analyzed_data
 
 #This function draws the unfiltered and interpolated data 
 def draw_unfiltered(title):
