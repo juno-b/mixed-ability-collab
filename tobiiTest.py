@@ -27,6 +27,7 @@ import math
 from mpl_toolkits.mplot3d import Axes3D
 from Point23D import Point3D
 from Data import FREQUENCY, BASIC_THRESHOLD, IVTData, GazeData, set_user_origin, AnalyzedData
+from Point23D import get_angular_distance
 
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
@@ -66,7 +67,7 @@ def append_pixel_data():
 def write_to_csv(data_to_write, combined_fixation_data):
     #main data csv
     headers = list(data_to_write[1].keys())
-    headers.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system'])
+    headers.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system', 'angular_distance'])
     with open('output.csv', 'w', newline = '') as file:
         writer = csv.DictWriter(file, fieldnames=headers)
         writer.writeheader()
@@ -216,7 +217,9 @@ def find_points_in_window(gaze_points):
                 break   
     return gaze_points
 
+#gets the positions in the user coordinate system and on the screen for any data point, including interpolated data
 def get_user_screen_pos(gaze_data):
+    user_pos, screen_pos = None, None
     #determine x, y, and z in the coordinate system and the user's gaze on the display as tuples
     if dominantEye == 'left':
         if gaze_data['left_gaze_origin_validity'] == 1:
@@ -234,6 +237,28 @@ def get_user_screen_pos(gaze_data):
             screen_pos = gaze_data['inter_gaze_point_on_display_area']
     return user_pos, screen_pos
 
+#this function finds the gaze angle for the points within the window
+def gaze_angle(interpolatedGazeData):
+    for i, gaze_data in enumerate(interpolatedGazeData):
+        prev_point_user, prev_point_screen, next_point_user, next_point_screen, window_1, window_2 = None, None, None, None, None, None
+        user_pos, screen_pos = get_user_screen_pos(gaze_data)
+        try:
+            window_1 = gaze_data['window_1']
+            window_2 = gaze_data['window_2']
+        except KeyError:
+            continue
+        if((not math.isnan(window_1)) & (not math.isnan(window_2)) & (user_pos is not None)):
+            prev_point_user, prev_point_screen = get_user_screen_pos(interpolatedGazeData[window_1])
+            next_point_user, next_point_screen = get_user_screen_pos(interpolatedGazeData[window_2])
+            if((prev_point_screen is not None) and (next_point_screen is not None)):
+                user_origin = Point3D(user_pos[0], user_pos[1], user_pos[2])
+                prev_point = Point3D(prev_point_screen[0]*width, prev_point_screen[1]*height, user_pos[2])
+                next_point = Point3D(next_point_screen[0]*width, next_point_screen[1]*height, user_pos[2])
+                ang_dist = get_angular_distance(user_origin, prev_point, next_point)
+                #print('Angular distance', ang_dist)
+                gaze_data['angular_distance'] = ang_dist
+    return interpolatedGazeData
+
 #calls the interpolateData, find_points_in_window, and gaze_angle functions. Uses this data in calculate_velocity and filters the
 #points to centroids. Reduces the centroids within a time window.
 def apply_ivt_filter(dominantEye):
@@ -241,24 +266,12 @@ def apply_ivt_filter(dominantEye):
     filtered_data_list = []
     parsed_data = []
     interpolatedGazeData = find_points_in_window(interpolatedGazeData)
-    for i, gaze_data in enumerate(interpolatedGazeData):
-        user_pos, screen_pos, prev_point_user, prev_point_screen, next_point_user, next_point_screen = None, None, None, None, None, None
-
-        if((not math.isnan(gaze_data['window_1'])) & (not math.isnan(gaze_data['window_2']))):
-            prev_point_user, prev_point_screen = get_user_screen_pos(interpolatedGazeData[gaze_data['window_1']])
-            next_point_user, next_point_screen = get_user_screen_pos(interpolatedGazeData[gaze_data['window_2']])
-        
-        user_pos, screen_pos = get_user_screen_pos(gaze_data)
-
-        this_point = Point3D()
-        
+    interpolatedGazeData = gaze_angle(interpolatedGazeData)
         #if((screen_pos is not None) & (user_pos is not None)):
             #find_points_in_window
             #user_p3d = Point3D(user_pos[0], user_pos[1], user_pos[2])
             #set_user_origin(user_p3d)
             #parsed_data.append(GazeData(i, gaze_data['device_time_stamp'], None, Point3D(screen_pos[0]*width, screen_pos[1]*height, user_pos[2])))
-
-
     #calculate moving window velocity for each point
     #classified_data, velocities = classify_gaze_data(parsed_data, FREQUENCY, BASIC_THRESHOLD)
     #analyzed_data = AnalyzedData(classified_data, velocities)
@@ -273,7 +286,7 @@ def apply_ivt_filter(dominantEye):
         #centroids_y.append(cen.y)
         #print("centroid:", [cen.x, cen.y])
   
-    return filtered_data_list, interpolatedGazeData, interpolatedGazeData, interpolatedGazeData#classified_data, analyzed_data
+    return filtered_data_list, interpolatedGazeData, interpolatedGazeData, interpolatedGazeData #classified_data, analyzed_data
 
 #This function draws the unfiltered and interpolated data 
 def draw_unfiltered(title):
