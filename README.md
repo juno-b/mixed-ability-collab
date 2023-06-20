@@ -60,10 +60,6 @@
         <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
@@ -130,9 +126,9 @@ Project Link: [https://github.com/juno-b/mixed-ability-collab](https://github.co
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-Veronica Lin
-Joon Jang
-Andrew Begel
+Veronica Lin \n
+Joon Jang \n
+Andrew Begel \n
 Created at the Carnegie Mellon University VariAbility Lab
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
