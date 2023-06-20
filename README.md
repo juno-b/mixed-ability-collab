@@ -109,8 +109,6 @@ You will need matplotlib and numpy to run the Python scripts.
 
 Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
 
-_For more examples, please refer to the [Documentation](https://example.com)_
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -125,14 +123,9 @@ Project Link: [https://github.com/juno-b/mixed-ability-collab](https://github.co
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
+This project would not have been possible without the support and contributions of Yanzi (Veronica) Lin, JiWoon (Joon) Jang, and [Andrew Begel](https://github.com/abegel).
 
-Yanzi (Veronica) Lin
-
-Joon Jang
-
-[Andrew Begel](https://github.com/abegel)
-
-Created at the Carnegie Mellon University [VariAbility Lab](https://github.com/cmu-variability)
+Created at the Carnegie Mellon University [VariAbility Lab](https://github.com/cmu-variability) during the Summer 2023 REUSE program.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
