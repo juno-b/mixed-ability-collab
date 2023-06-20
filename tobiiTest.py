@@ -24,9 +24,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation as fa
 import numpy as np
 import math
-from mpl_toolkits.mplot3d import Axes3D
 from Point23D import Point3D
-from Data import FREQUENCY, BASIC_THRESHOLD, IVTData, GazeData, set_user_origin, AnalyzedData
 from Point23D import get_angular_distance
 
 #find the eye tracker
@@ -178,21 +176,6 @@ def interpolateData(dominantEye):
                         interpolatedGazeData[j]['inter_gaze_origin_in_user_coordinate_system'] = [ucx_inter, ucy_inter, ucz_inter]
             prev_valid_index = i
     return interpolatedGazeData
-
-#This function is from Yejining's GitHub and calls functions from Data and Point23D to classify fixations/saccades
-def classify_gaze_data(gaze_datas, frequency, threshold):
-    ivt_data = IVTData(gaze_datas, frequency, threshold)
-
-    while True:
-        if ivt_data.is_iterating():
-            ivt_data.calculate_angular_distance()
-        ivt_data.set_window()
-        if ivt_data.is_over(): break
-        if ivt_data.is_window_more_than_a_second():
-            ivt_data.set_velocity_and_type()
-
-    #ivt_data.sort_velocities()
-    return ivt_data.gaze_datas, ivt_data.velocities
 
 #adds the index of the point within the window furthest before (window_1) and after (window_2) each gaze point
 def find_points_in_window(gaze_points):
