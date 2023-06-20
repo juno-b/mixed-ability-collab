@@ -126,13 +126,13 @@ Project Link: [https://github.com/juno-b/mixed-ability-collab](https://github.co
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-Veronica Lin
+Yanzi (Veronica) Lin
 
 Joon Jang
 
 [Andrew Begel](https://github.com/abegel)
 
-Created at the Carnegie Mellon University VariAbility Lab
+Created at the Carnegie Mellon University [VariAbility Lab](https://github.com/cmu-variability)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
