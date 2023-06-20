@@ -216,6 +216,24 @@ def find_points_in_window(gaze_points):
                 break   
     return gaze_points
 
+def get_user_screen_pos(gaze_data):
+    #determine x, y, and z in the coordinate system and the user's gaze on the display as tuples
+    if dominantEye == 'left':
+        if gaze_data['left_gaze_origin_validity'] == 1:
+            user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
+            screen_pos = gaze_data['left_gaze_point_on_display_area']
+        elif gaze_data['inter_gaze_origin_validity'] == 1:
+            user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
+            screen_pos = gaze_data['inter_gaze_point_on_display_area']
+    else:
+        if gaze_data['right_gaze_origin_validity'] == 1:
+            user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
+            screen_pos = gaze_data['right_gaze_point_on_display_area']
+        elif gaze_data['inter_gaze_origin_validity'] == 1:
+            user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
+            screen_pos = gaze_data['inter_gaze_point_on_display_area']
+    return user_pos, screen_pos
+
 #calls the interpolateData, find_points_in_window, and gaze_angle functions. Uses this data in calculate_velocity and filters the
 #points to centroids. Reduces the centroids within a time window.
 def apply_ivt_filter(dominantEye):
@@ -224,29 +242,16 @@ def apply_ivt_filter(dominantEye):
     parsed_data = []
     interpolatedGazeData = find_points_in_window(interpolatedGazeData)
     for i, gaze_data in enumerate(interpolatedGazeData):
-        user_pos, screen_pos = None, None
-        #determine x, y, and z in the trackbox system as a tuple position
-        if dominantEye == 'left':
-            if gaze_data['left_gaze_origin_validity'] == 1:
-                user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
-                screen_pos = gaze_data['left_gaze_point_on_display_area']
-            #elif gaze_data['right_gaze_origin_validity'] == 1:
-                #user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
-                #screen_pos = gaze_data['right_gaze_point_on_display_area']
-            elif gaze_data['inter_gaze_origin_validity'] == 1:
-                user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
-                screen_pos = gaze_data['inter_gaze_point_on_display_area']
-        else:
-            if gaze_data['right_gaze_origin_validity'] == 1:
-                user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
-                screen_pos = gaze_data['right_gaze_point_on_display_area']
-            #elif gaze_data['left_gaze_origin_validity'] == 1:
-                #user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
-                #screen_pos = gaze_data['left_gaze_point_on_display_area']
-            elif gaze_data['inter_gaze_origin_validity'] == 1:
-                user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
-                screen_pos = gaze_data['inter_gaze_point_on_display_area']
- 
+        user_pos, screen_pos, prev_point_user, prev_point_screen, next_point_user, next_point_screen = None, None, None, None, None, None
+
+        if((not math.isnan(gaze_data['window_1'])) & (not math.isnan(gaze_data['window_2']))):
+            prev_point_user, prev_point_screen = get_user_screen_pos(interpolatedGazeData[gaze_data['window_1']])
+            next_point_user, next_point_screen = get_user_screen_pos(interpolatedGazeData[gaze_data['window_2']])
+        
+        user_pos, screen_pos = get_user_screen_pos(gaze_data)
+
+        this_point = Point3D()
+        
         #if((screen_pos is not None) & (user_pos is not None)):
             #find_points_in_window
             #user_p3d = Point3D(user_pos[0], user_pos[1], user_pos[2])
