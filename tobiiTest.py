@@ -65,7 +65,7 @@ def append_pixel_data():
 def write_to_csv(data_to_write, combined_fixation_data):
     #main data csv
     headers = list(data_to_write[1].keys())
-    headers.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system', 'angular_distance'])
+    headers.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system', 'angular_distance', 'velocity'])
     with open('output.csv', 'w', newline = '') as file:
         writer = csv.DictWriter(file, fieldnames=headers)
         writer.writeheader()
@@ -221,7 +221,7 @@ def get_user_screen_pos(gaze_data):
     return user_pos, screen_pos
 
 #this function finds the gaze angle for the points within the window
-def gaze_angle(interpolatedGazeData):
+def gaze_angle_velocity(interpolatedGazeData):
     for i, gaze_data in enumerate(interpolatedGazeData):
         prev_point_user, prev_point_screen, next_point_user, next_point_screen, window_1, window_2 = None, None, None, None, None, None
         user_pos, screen_pos = get_user_screen_pos(gaze_data)
@@ -240,36 +240,36 @@ def gaze_angle(interpolatedGazeData):
                 ang_dist = get_angular_distance(user_origin, prev_point, next_point)
                 #print('Angular distance', ang_dist)
                 gaze_data['angular_distance'] = ang_dist
+
+                prev_gaze = interpolatedGazeData[window_1]
+                next_gaze = interpolatedGazeData[window_2]
+                time_diff = (next_gaze['system_time_stamp'] / 1000000) - (prev_gaze['system_time_stamp'] / 1000000)
+                if time_diff != 0:
+                    velocity = gaze_data['angular_distance'] / time_diff
+                    gaze_data['velocity'] = velocity
     return interpolatedGazeData
 
-#calls the interpolateData, find_points_in_window, and gaze_angle functions. Uses this data in calculate_velocity and filters the
-#points to centroids. Reduces the centroids within a time window.
+#calls the interpolateData, find_points_in_window, and gaze_angle functions.
+#uses this data in calculate_velocity and filters the points to centroids. 
+# @TODO: Reduces the centroids to individual points
 def apply_ivt_filter(dominantEye):
     interpolatedGazeData = interpolateData(dominantEye)
     filtered_data_list = []
-    parsed_data = []
-    interpolatedGazeData = find_points_in_window(interpolatedGazeData)
-    interpolatedGazeData = gaze_angle(interpolatedGazeData)
-        #if((screen_pos is not None) & (user_pos is not None)):
-            #find_points_in_window
-            #user_p3d = Point3D(user_pos[0], user_pos[1], user_pos[2])
-            #set_user_origin(user_p3d)
-            #parsed_data.append(GazeData(i, gaze_data['device_time_stamp'], None, Point3D(screen_pos[0]*width, screen_pos[1]*height, user_pos[2])))
-    #calculate moving window velocity for each point
-    #classified_data, velocities = classify_gaze_data(parsed_data, FREQUENCY, BASIC_THRESHOLD)
-    #analyzed_data = AnalyzedData(classified_data, velocities)
-    #analyzed_data.init_datas()
-    #iterator = 0
-    #for vel in velocities:
-        #iterator += 1
-    #print("i:", iterator)
-    #print("# centroids:", len(analyzed_data.centroids))
-    #for cen in analyzed_data.centroids:
-        #centroids_x.append(cen.x)
-        #centroids_y.append(cen.y)
-        #print("centroid:", [cen.x, cen.y])
+    pointsData = find_points_in_window(interpolatedGazeData)
+    angleVelocityData = gaze_angle_velocity(pointsData)
+    for gaze_data in angleVelocityData:
+        try:
+            if gaze_data['velocity'] <= velocity_threshold:
+                gaze_data_x = gaze_data['left_gaze_point_on_display_area'][0] * width if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][0] * width
+                gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] * height if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1] * height
+                if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y))):
+                    centroids_x.append(gaze_data_x)
+                    centroids_y.append(gaze_data_y)
+                    print("centroid:", [gaze_data_x, gaze_data_y])
+        except KeyError:
+            continue
   
-    return filtered_data_list, interpolatedGazeData, interpolatedGazeData, interpolatedGazeData #classified_data, analyzed_data
+    return filtered_data_list, interpolatedGazeData, pointsData, angleVelocityData
 
 #This function draws the unfiltered and interpolated data 
 def draw_unfiltered(title):
