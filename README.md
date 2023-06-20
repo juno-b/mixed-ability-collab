@@ -130,7 +130,7 @@ Veronica Lin
 
 Joon Jang
 
-[Andrew Begel](https://https://github.com/abegel)
+[Andrew Begel](https://github.com/abegel)
 
 Created at the Carnegie Mellon University VariAbility Lab
 
