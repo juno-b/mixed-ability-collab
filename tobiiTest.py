@@ -38,12 +38,14 @@ height = monitor.height
 
 #glbal variable declaration- lists of coordinates for the left and right eyes as well as interpolated data
 gaze_data_list, left_x, left_y, right_x, right_y, inter_x, inter_y, centroids_x, centroids_y = [], [], [], [], [], [], [], [], []
+unfiltered_centroids_x, unfiltered_centroids_y = [], []
 
 # I-VT filter parameters, ADJUST AS NEEDED
 velocity_threshold = 30                     # maximum angle to be considered a fixation, default 30 degrees
 maximum_interpolation_time_micro = 75000    # maximum allowed time for interpolation in microseconds
 maximum_time_between_fixations = 75000      # maximumm allowed time between fixations in microseconds
-maximum_angle_between_fixation = 0.5        # maximum angle between fixations in degrees
+maximum_angle_between_fixations = 0.5       # maximum angle between fixations in degrees
+minimum_fixation_duration = 60000           # minimum fixation duration in microseconds
 window_size_seconds = 0.01    # maximum time on either side of the spanning window for velocity calculations, default 10 ms --> 0.01 seconds
 
 #Switch based on the dominant eye of the participant
@@ -63,7 +65,7 @@ def append_pixel_data():
         right_y.append(row['right_gaze_point_on_display_area'][1]*height)
 
 #This function writes data to a csv file. Additional data column header values should be added to headers/headers2.extend as necessary
-def write_to_csv(data_to_write, combined_fixation_data):
+def write_to_csv(data_to_write, centroid_data):
     #main data csv
     headers = list(data_to_write[1].keys())
     headers.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system', 'angular_distance', 'velocity'])
@@ -72,22 +74,12 @@ def write_to_csv(data_to_write, combined_fixation_data):
         writer.writeheader()
         writer.writerows(data_to_write)
     
-    #combined fixations csv
-    #headers2 = list(combined_fixation_data[0].keys())
-    #headers2.extend(['selected_eye', 'inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system'])#, 'time_fixation_ended'])
-    #headers2 = list(['id', 'time', 'velocity', 'type', 'point'])
-    #with open('combined_fixations.csv', 'w', newline = '') as file2:
-        #writer = csv.DictWriter(file2, fieldnames=headers2)
-        #writer.writeheader()
-        #for gaze_data in combined_fixation_data:
-            #data_dict = {
-                #'id': gaze_data.id,
-                #'time': gaze_data.time,
-                #'velocity': gaze_data.velocity,
-                #'type': gaze_data.movement_type,
-                #'point': gaze_data.point.to_tuple()
-            #}
-            #writer.writerow(data_dict)
+    #centroid csv
+    headers2 = list(centroid_data[0].keys())
+    with open('centroids.csv', 'w', newline = '') as file2:
+        writer = csv.DictWriter(file2, fieldnames=headers2)
+        writer.writeheader()
+        writer.writerows(centroid_data)
 
 #This function opens te eye tracker for the specified duration and then closes the connection
 def run_eyetracker(duration):
@@ -259,10 +251,10 @@ def find_centroids(angleVelocityData):
                 gaze_data_x = gaze_data['left_gaze_point_on_display_area'][0] * width if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][0] * width
                 gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] * height if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1] * height
                 if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y))):
-                    #centroids_x.append(gaze_data_x)
-                    #centroids_y.append(gaze_data_y)
-                    unfiltered_centroids.append([gaze_data_x, gaze_data_y])
+                    unfiltered_centroids.append(gaze_data)
                     print("centroid:", [gaze_data_x, gaze_data_y])
+                    unfiltered_centroids_x.append(gaze_data_x)
+                    unfiltered_centroids_y.append(gaze_data_y)
         except KeyError:
             continue
     return filter_centroids(unfiltered_centroids)
@@ -270,11 +262,42 @@ def find_centroids(angleVelocityData):
 #this function merges adjacent fixations using the maximum time and angle between fixations
 def filter_centroids(unfiltered_centroids):
     filtered_centroids = []
+    potential_centroid = []
+    potential_centroid.append(unfiltered_centroids[0])
+    for i, centroid in enumerate(unfiltered_centroids, start=1):
+        #check if the current point is within the maximum time and angle between fixations
+        prev_centroid_angle = unfiltered_centroids[i-1]['angular_distance']
+        prev_centroid_time = unfiltered_centroids[i-1]['device_time_stamp']
+        centroid_angle = centroid['angular_distance']
+        centroid_time = centroid['device_time_stamp']
+        print(prev_centroid_angle, prev_centroid_time, centroid_angle, centroid_time)
+        print("angle_diff:", abs(prev_centroid_angle - centroid_angle), "time_diff:", abs(prev_centroid_time - centroid_time))
+        if((abs(prev_centroid_angle - centroid_angle) > maximum_angle_between_fixations) or 
+            (abs(prev_centroid_time - centroid_time) > maximum_time_between_fixations)):
+            print("condition triggered")
+            #if the threshold is exceeded, the points from the potential centroid must be evaluated and cleared
+            if len(potential_centroid) > 1:
+                #check if the time between the first and last points in the potential centroid is more than the minimum fixation duration
+                if (potential_centroid[-1]['device_time_stamp'] - potential_centroid[0]['device_time_stamp']) > minimum_fixation_duration:
+                    #the centroid is the average of the points
+                    centroid_x, centroid_y = 0, 0
+                    for point in potential_centroid:
+                        centroid_x += point[0]
+                        centroid_y += point[1]
+                    centroid_x /= len(potential_centroid)
+                    centroid_y /= len(potential_centroid)
+                    filtered_centroids.append([centroid_x, centroid_y])
+                    #these variables are for graphing the centroids
+                    centroids_x.append(centroid_x)
+                    centroids_y.append(centroid_y)
+            potential_centroid = []
+        else:
+            #otherwise, this point should be appended to the list of points considered in the combined centroid
+            potential_centroid.append(centroid)
     return filtered_centroids
 
 #calls the interpolateData, find_points_in_window, and gaze_angle functions.
-#uses this data in calculate_velocity and filters the points to centroids. 
-# @TODO: Reduces the centroids to individual points
+#uses this data in calculate_velocity and filters the points to centroids, which are then merged. 
 def apply_ivt_filter(dominantEye):
     interpolatedGazeData = interpolateData(dominantEye)
     pointsData = find_points_in_window(interpolatedGazeData)
@@ -309,7 +332,7 @@ def draw_pixels(data, title):
     plt.show()
 
 #This is the update function for the animated plots
-def update(frame):
+def update(filtered_data, frame):
     # Clear the previous plot
     plt.cla()
 
@@ -408,7 +431,7 @@ draw_unfiltered('Unfiltered')
 plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
 graph(centroids_x, centroids_y, 'Centroids')
-write_to_csv(interpolatedData)
+write_to_csv(interpolatedData, centroidData)
 
 #TASKS
 #get additional data from the tobii sdk struct
