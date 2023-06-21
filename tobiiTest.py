@@ -39,11 +39,12 @@ height = monitor.height
 #glbal variable declaration- lists of coordinates for the left and right eyes as well as interpolated data
 gaze_data_list, left_x, left_y, right_x, right_y, inter_x, inter_y, centroids_x, centroids_y = [], [], [], [], [], [], [], [], []
 
-# I-VT filter parameters
-velocity_threshold = 30  # ADJUST AS NEEDED
-time_75 = 75000          # 75 ms to microseconds
-time_60 = 60000          # 60 ms to microseconds
-window_size_seconds = 10 / 1000 #10 ms on either side of the window converted to seconds
+# I-VT filter parameters, ADJUST AS NEEDED
+velocity_threshold = 30                     # maximum angle to be considered a fixation, default 30 degrees
+maximum_interpolation_time_micro = 75000    # maximum allowed time for interpolation in microseconds
+maximum_time_between_fixations = 75000      # maximumm allowed time between fixations in microseconds
+maximum_angle_between_fixation = 0.5        # maximum angle between fixations in degrees
+window_size_seconds = 0.01    # maximum time on either side of the spanning window for velocity calculations, default 10 ms --> 0.01 seconds
 
 #Switch based on the dominant eye of the participant
 dominantEye = 'left'
@@ -118,7 +119,7 @@ def interpolateData(dominantEye):
                 delta_t = abs(gaze_data['device_time_stamp'] - prev_valid_gaze_data['device_time_stamp'])
 
                 #we also need to interpolate the origin in the trackbox and user coordinate systems
-                if delta_t <= time_75:
+                if delta_t <= maximum_interpolation_time_micro:
                     # Calculate the slope for linear interpolation of gaze point
                     x1, y1 = prev_valid_gaze_data['left_gaze_point_on_display_area'] if dominantEye == 'left' else prev_valid_gaze_data['right_gaze_point_on_display_area']
                     x2, y2 = gaze_point[0]
@@ -249,27 +250,37 @@ def gaze_angle_velocity(interpolatedGazeData):
                     gaze_data['velocity'] = velocity
     return interpolatedGazeData
 
-#calls the interpolateData, find_points_in_window, and gaze_angle functions.
-#uses this data in calculate_velocity and filters the points to centroids. 
-# @TODO: Reduces the centroids to individual points
-def apply_ivt_filter(dominantEye):
-    interpolatedGazeData = interpolateData(dominantEye)
-    filtered_data_list = []
-    pointsData = find_points_in_window(interpolatedGazeData)
-    angleVelocityData = gaze_angle_velocity(pointsData)
+#this function uses the angle and velocity data to find centroids and calls the function to merge adjacent fixations (filter centroids)
+def find_centroids(angleVelocityData):
+    unfiltered_centroids = []
     for gaze_data in angleVelocityData:
         try:
             if gaze_data['velocity'] <= velocity_threshold:
                 gaze_data_x = gaze_data['left_gaze_point_on_display_area'][0] * width if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][0] * width
                 gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] * height if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1] * height
                 if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y))):
-                    centroids_x.append(gaze_data_x)
-                    centroids_y.append(gaze_data_y)
+                    #centroids_x.append(gaze_data_x)
+                    #centroids_y.append(gaze_data_y)
+                    unfiltered_centroids.append([gaze_data_x, gaze_data_y])
                     print("centroid:", [gaze_data_x, gaze_data_y])
         except KeyError:
             continue
-  
-    return filtered_data_list, interpolatedGazeData, pointsData, angleVelocityData
+    return filter_centroids(unfiltered_centroids)
+
+#this function merges adjacent fixations using the maximum time and angle between fixations
+def filter_centroids(unfiltered_centroids):
+    filtered_centroids = []
+    return filtered_centroids
+
+#calls the interpolateData, find_points_in_window, and gaze_angle functions.
+#uses this data in calculate_velocity and filters the points to centroids. 
+# @TODO: Reduces the centroids to individual points
+def apply_ivt_filter(dominantEye):
+    interpolatedGazeData = interpolateData(dominantEye)
+    pointsData = find_points_in_window(interpolatedGazeData)
+    angleVelocityData = gaze_angle_velocity(pointsData)
+    centroidData = find_centroids(angleVelocityData)
+    return interpolatedGazeData, centroidData
 
 #This function draws the unfiltered and interpolated data 
 def draw_unfiltered(title):
@@ -325,6 +336,7 @@ def update(frame):
 
     plt.show()
 
+#This is a basic graphing function using the x and y data and a title
 def graph(x, y, title):
     plt.scatter(x, y, color='blue', label=title)
     # Set the x and y limits
@@ -335,7 +347,7 @@ def graph(x, y, title):
     plt.ylabel('Y')
     plt.legend()
     plt.title(title)
-
+    #plot the function
     plt.show()
 
 #Plots the 3D trackbox coordinate data 
@@ -391,13 +403,12 @@ def plot_trackbox_data(interpolatedData, title, origin, origin2):
 #call the necessary functions
 run_eyetracker(5)
 append_pixel_data()
-filtered_data, interpolatedData, classified_data, analyzed_data = apply_ivt_filter(dominantEye)
-#draw_pixels(filtered_data, 'Filtered')
+interpolatedData, centroidData = apply_ivt_filter(dominantEye)
 draw_unfiltered('Unfiltered')
 plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
 graph(centroids_x, centroids_y, 'Centroids')
-write_to_csv(interpolatedData, classified_data)
+write_to_csv(interpolatedData)
 
 #TASKS
 #get additional data from the tobii sdk struct
