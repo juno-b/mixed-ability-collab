@@ -260,6 +260,7 @@ def find_centroids(angleVelocityData):
             continue
     return filter_centroids(unfiltered_centroids)
 
+#This class holds centroid data and contains functions to access time/coordinate data
 class CentroidData:
     def __init__(self, id, start, end, x, y):
         self.id = id
@@ -283,6 +284,7 @@ class CentroidData:
             sumY += item
         return sumY
 
+#This function gets the point on the gaze display for any given gaze data point
 def getPointDomEye(point):
     centroid_x, centroid_y = None, None
     if point['selected_eye'] == 'left':
@@ -296,6 +298,7 @@ def getPointDomEye(point):
         centroid_y = point['right_gaze_point_on_display_area'][1] 
     return (centroid_x, centroid_y)
 
+#This function converts a gaze data point to a CentroidData object
 def gazeTupleToCentroidData(gazeTuple):
     x, y = getPointDomEye(gazeTuple)
     return CentroidData([gazeTuple['index']], gazeTuple['device_time_stamp'], gazeTuple['device_time_stamp'], [x], [y])    
