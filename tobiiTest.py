@@ -30,6 +30,7 @@ from Point23D import get_angular_distance
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
 eyetracker = eyetrackers[0]
+FREQUENCY = 250 #Hz
 
 #get screen resolution
 monitor = get_monitors()[0]
@@ -252,48 +253,91 @@ def find_centroids(angleVelocityData):
                 gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] * height if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1] * height
                 if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y))):
                     unfiltered_centroids.append(gaze_data)
-                    print("centroid:", [gaze_data_x, gaze_data_y])
+                    #print("centroid:", [gaze_data_x, gaze_data_y])
                     unfiltered_centroids_x.append(gaze_data_x)
                     unfiltered_centroids_y.append(gaze_data_y)
         except KeyError:
             continue
     return filter_centroids(unfiltered_centroids)
 
+class CentroidData:
+    def __init__(self, id, start, end, x, y):
+        self.id = id
+        self.start = start
+        self.end = end
+        self.x = x
+        self.y = y
+
+    def time(self):
+        return self.end - self.start
+    
+    def sumX(self):
+        sumX = 0
+        for item in self.x:
+            sumX += item
+        return sumX
+    
+    def sumY(self):
+        sumY = 0
+        for item in self.y:
+            sumY += item
+        return sumY
+
+def getPointDomEye(point):
+    centroid_x, centroid_y = None, None
+    if point['selected_eye'] == 'left':
+        centroid_x = point['left_gaze_point_on_display_area'][0]
+        centroid_y = point['left_gaze_point_on_display_area'][1]
+    elif point['selected_eye'] == 'inter':
+        centroid_x = point['inter_gaze_point_on_display_area'][0]
+        centroid_y = point['inter_gaze_point_on_display_area'][1] 
+    elif point['selected_eye'] == 'right':
+        centroid_x = point['right_gaze_point_on_display_area'][0] 
+        centroid_y = point['right_gaze_point_on_display_area'][1] 
+    return (centroid_x, centroid_y)
+
+def gazeTupleToCentroidData(gazeTuple):
+    x, y = getPointDomEye(gazeTuple)
+    return CentroidData([gazeTuple['index']], gazeTuple['device_time_stamp'], gazeTuple['device_time_stamp'], [x], [y])    
+
 #this function merges adjacent fixations using the maximum time and angle between fixations
 def filter_centroids(unfiltered_centroids):
-    filtered_centroids = []
-    potential_centroid = []
-    potential_centroid.append(unfiltered_centroids[0])
-    for i, centroid in enumerate(unfiltered_centroids, start=1):
-        #check if the current point is within the maximum time and angle between fixations
-        prev_centroid_angle = unfiltered_centroids[i-1]['angular_distance']
+    intermediary_centroids = []
+    intermediary_centroids.append(gazeTupleToCentroidData(unfiltered_centroids[0]))
+    previous_fixation = intermediary_centroids[0]
+    #print("NUM UNFILTERED: ", len(unfiltered_centroids))
+    for i, centroid in enumerate(unfiltered_centroids[1:], start=1):
+        #check if device time stamp is within one measurement of the previous point
         prev_centroid_time = unfiltered_centroids[i-1]['device_time_stamp']
-        centroid_angle = centroid['angular_distance']
         centroid_time = centroid['device_time_stamp']
-        print(prev_centroid_angle, prev_centroid_time, centroid_angle, centroid_time)
-        print("angle_diff:", abs(prev_centroid_angle - centroid_angle), "time_diff:", abs(prev_centroid_time - centroid_time))
-        if((abs(prev_centroid_angle - centroid_angle) > maximum_angle_between_fixations) or 
-            (abs(prev_centroid_time - centroid_time) > maximum_time_between_fixations)):
-            print("condition triggered")
-            #if the threshold is exceeded, the points from the potential centroid must be evaluated and cleared
-            if len(potential_centroid) > 1:
-                #check if the time between the first and last points in the potential centroid is more than the minimum fixation duration
-                if (potential_centroid[-1]['device_time_stamp'] - potential_centroid[0]['device_time_stamp']) > minimum_fixation_duration:
-                    #the centroid is the average of the points
-                    centroid_x, centroid_y = 0, 0
-                    for point in potential_centroid:
-                        centroid_x += point[0]
-                        centroid_y += point[1]
-                    centroid_x /= len(potential_centroid)
-                    centroid_y /= len(potential_centroid)
-                    filtered_centroids.append([centroid_x, centroid_y])
-                    #these variables are for graphing the centroids
-                    centroids_x.append(centroid_x)
-                    centroids_y.append(centroid_y)
-            potential_centroid = []
+        #if the time difference is greater than one measurement, then the previous point is the end of a fixation
+        if(abs(prev_centroid_time - centroid_time) > (1/FREQUENCY * 1000000)):
+            intermediary_centroids.append(previous_fixation)
+            previous_fixation = gazeTupleToCentroidData(centroid)
+        #otherwise, this point must be added to the previous fixation
         else:
-            #otherwise, this point should be appended to the list of points considered in the combined centroid
-            potential_centroid.append(centroid)
+            previous_fixation.id.append(centroid['index'])
+            previous_fixation.end = centroid_time
+            previous_fixation.x.append(getPointDomEye(centroid)[0])
+            previous_fixation.y.append(getPointDomEye(centroid)[1])
+    #print("NUM INTERMEDIARY", len(intermediary_centroids))
+
+    filtered_centroids = []
+    for i, centroid in enumerate(intermediary_centroids[1:], start=1):
+        #check if the current point is within the maximum time and angle between fixations
+        prev_centroid_time = intermediary_centroids[i-1].end
+        centroid_time = centroid.start
+        if (abs(centroid_time-prev_centroid_time) < maximum_time_between_fixations):
+            #calculate angle between the two points
+            angle = math.atan2(centroid.y[0] - intermediary_centroids[i-1].y[-1], centroid.x[0] - intermediary_centroids[i-1].x[-1])
+            if(angle < 0.5):
+                #merge points
+                intermediary_centroids[i-1].id += intermediary_centroids[i].id
+                intermediary_centroids[i-1].end = intermediary_centroids[i].end
+                intermediary_centroids[i-1].x += intermediary_centroids[i].x
+                intermediary_centroids[i-1].y += intermediary_centroids[i].y
+                intermediary_centroids.remove(intermediary_centroids[i])
+
     return filtered_centroids
 
 #calls the interpolateData, find_points_in_window, and gaze_angle functions.
@@ -373,6 +417,21 @@ def graph(x, y, title):
     #plot the function
     plt.show()
 
+#This is a basic graphing function using two sets of x/y points and titles
+def graph(x1, y1, x2, y2, title1, title2):
+    plt.scatter(x1, y1, color='blue', label=title1)
+    plt.scatter(x2, y2, color='red', label=title2)
+    # Set the x and y limits
+    plt.xlim(0, width)
+    plt.ylim(0, height)
+    # Add labels and legend
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.legend()
+    plt.title(title1 + " and " + title2)
+    # Plot the scatter points
+    plt.show()
+
 #Plots the 3D trackbox coordinate data 
 def plot_trackbox_data(interpolatedData, title, origin, origin2):
     # Create a 3D plot
@@ -430,7 +489,7 @@ interpolatedData, centroidData = apply_ivt_filter(dominantEye)
 draw_unfiltered('Unfiltered')
 plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
-graph(centroids_x, centroids_y, 'Centroids')
+graph(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y, 'Unfiltered Centroids', 'Filtered Centroids')
 write_to_csv(interpolatedData, centroidData)
 
 #TASKS
