@@ -76,7 +76,7 @@ def write_to_csv(data_to_write, centroid_data):
         writer.writerows(data_to_write)
     
     #centroid csv
-    headers2 = list(centroid_data[0].keys())
+    headers2 = ['id', 'start', 'end', 'x', 'y']
     with open('centroids.csv', 'w', newline = '') as file2:
         writer = csv.DictWriter(file2, fieldnames=headers2)
         writer.writeheader()
@@ -284,6 +284,9 @@ class CentroidData:
         for item in self.y:
             sumY += item
         return sumY
+    
+    def coords(self):
+        return [self.sumX()/len(self.x), self.sumY()/len(self.y)]
 
 #This function gets the point on the gaze display for any given gaze data point
 def getPointDomEye(point):
@@ -330,7 +333,7 @@ def filter_centroids(unfiltered_centroids):
             previous_fixation.y.append(y)
     #print("NUM INTERMEDIARY", len(intermediary_centroids))
 
-    filtered_centroids = []
+    """filtered_centroids = []
     i = 1
     while i < len(intermediary_centroids):
         #check if the current point is within the maximum time and angle between fixations
@@ -345,8 +348,9 @@ def filter_centroids(unfiltered_centroids):
             point2 = Point3D(centroid.x[0], centroid.y[0], intermediary_centroids[i-1].origin[2])
             angle = get_angular_distance(origin, point1, point2)
             print("ANGLE: ", angle)
-            if(angle < 0.5):
+            if(angle > 0):# < 0.5
                 #merge points
+                print("MERGING")
                 intermediary_centroids[i-1].id += intermediary_centroids[i].id
                 intermediary_centroids[i-1].end = intermediary_centroids[i].end
                 intermediary_centroids[i-1].x += intermediary_centroids[i].x
@@ -355,7 +359,43 @@ def filter_centroids(unfiltered_centroids):
                 i -= 1
         i+=1
 
-    return intermediary_centroids
+    return intermediary_centroids"""
+    filtered_centroids = {}
+    i = 1
+    while i < len(intermediary_centroids):
+        # check if the current point is within the maximum time and angle between fixations
+        centroid = intermediary_centroids[i]
+        prev_centroid_time = intermediary_centroids[i-1].end
+        centroid_time = centroid.start
+        if abs(centroid_time - prev_centroid_time) < maximum_time_between_fixations:
+            # calculate angle between the last sample in the first fixation and the first sample in the second fixation
+            origin = Point3D(intermediary_centroids[i-1].origin[0], intermediary_centroids[i-1].origin[1], intermediary_centroids[i-1].origin[2])
+            point1 = Point3D(intermediary_centroids[i-1].x[-1], intermediary_centroids[i-1].y[-1], intermediary_centroids[i-1].origin[2])
+            point2 = Point3D(centroid.x[0], centroid.y[0], intermediary_centroids[i-1].origin[2])
+            angle = get_angular_distance(origin, point1, point2)
+            print("ANGLE: ", angle)
+            if angle > 0:  # < 0.5
+                # merge points
+                print("MERGING")
+                merged_centroid = intermediary_centroids[i-1]
+                merged_centroid.id += centroid.id
+                merged_centroid.end = centroid.end
+                merged_centroid.x += centroid.x
+                merged_centroid.y += centroid.y
+            else:
+                merged_centroid = centroid
+
+            filtered_centroids[merged_centroid.id[0]] = merged_centroid
+        else:
+            filtered_centroids[centroid.id[0]] = centroid
+
+        i += 1
+    for value in filtered_centroids.values():
+        coordsx, coordsy = value.coords()
+        #print(coordsx, coordsy)
+        centroids_x.append(coordsx*width)
+        centroids_y.append(coordsy*height)
+    return list(filtered_centroids.values())
 
 #calls the interpolateData, find_points_in_window, and gaze_angle functions.
 #uses this data in calculate_velocity and filters the points to centroids, which are then merged. 
