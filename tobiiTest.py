@@ -315,7 +315,6 @@ def filter_centroids(unfiltered_centroids):
     intermediary_centroids = []
     intermediary_centroids.append(gazeTupleToCentroidData(unfiltered_centroids[0]))
     previous_fixation = intermediary_centroids[0]
-    #print("NUM UNFILTERED: ", len(unfiltered_centroids))
     for i, centroid in enumerate(unfiltered_centroids[1:], start=1):
         #check if device time stamp is within one measurement of the previous point
         prev_centroid_time = unfiltered_centroids[i-1]['device_time_stamp']
@@ -331,35 +330,7 @@ def filter_centroids(unfiltered_centroids):
             x, y, z = getPointDomEye(centroid)
             previous_fixation.x.append(x)
             previous_fixation.y.append(y)
-    #print("NUM INTERMEDIARY", len(intermediary_centroids))
 
-    """filtered_centroids = []
-    i = 1
-    while i < len(intermediary_centroids):
-        #check if the current point is within the maximum time and angle between fixations
-        centroid = intermediary_centroids[i]
-        prev_centroid_time = intermediary_centroids[i-1].end
-        centroid_time = centroid.start
-        if (abs(centroid_time-prev_centroid_time) < maximum_time_between_fixations):
-            #calculate angle between the last sample in the first fixation and the first sample in the second fixation
-            #print(type(intermediary_centroids[i-1].origin[0]), type(intermediary_centroids[i-1].x[-1]), type(centroid.x[0]))
-            origin = Point3D(intermediary_centroids[i-1].origin[0], intermediary_centroids[i-1].origin[1], intermediary_centroids[i-1].origin[2])
-            point1 = Point3D(intermediary_centroids[i-1].x[-1], intermediary_centroids[i-1].y[-1], intermediary_centroids[i-1].origin[2])
-            point2 = Point3D(centroid.x[0], centroid.y[0], intermediary_centroids[i-1].origin[2])
-            angle = get_angular_distance(origin, point1, point2)
-            print("ANGLE: ", angle)
-            if(angle > 0):# < 0.5
-                #merge points
-                print("MERGING")
-                intermediary_centroids[i-1].id += intermediary_centroids[i].id
-                intermediary_centroids[i-1].end = intermediary_centroids[i].end
-                intermediary_centroids[i-1].x += intermediary_centroids[i].x
-                intermediary_centroids[i-1].y += intermediary_centroids[i].y
-                intermediary_centroids.remove(intermediary_centroids[i])
-                i -= 1
-        i+=1
-
-    return intermediary_centroids"""
     filtered_centroids = {}
     i = 1
     while i < len(intermediary_centroids):
