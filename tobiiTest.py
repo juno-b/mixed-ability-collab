@@ -276,24 +276,24 @@ class CentroidData:
         self.x = x
         self.y = y
         self.origin = z
-
+    #returns the difference in start and end time of the centroid
     def time(self):
         return self.end - self.start
-    
+    #returns the sum of the x coordinates of the centroid
     def sumX(self):
         sumX = 0
         for item in self.x:
             sumX += item
         return sumX
-    
+    #returns the sum of the y coordinates of the centroid
     def sumY(self):
         sumY = 0
         for item in self.y:
             sumY += item
         return sumY
-    
+    #returns the average [x,y] coordinates of the centroid in pixels
     def coords(self):
-        return [self.sumX()/len(self.x), self.sumY()/len(self.y)]
+        return [self.sumX()/len(self.x)*width, self.sumY()/len(self.y)*height]
 
 #This function gets the point on the gaze display for any given gaze data point
 def getPointDomEye(point):
@@ -323,11 +323,12 @@ def filter_centroids(unfiltered_centroids):
     intermediary_centroids.append(gazeTupleToCentroidData(unfiltered_centroids[0]))
     previous_fixation = intermediary_centroids[0]
     for i, centroid in enumerate(unfiltered_centroids[1:], start=1):
-        #check if device time stamp is within one measurement of the previous point
+        #check if device time stamp is within one measurement (based on the Hz of the tracker) of the previous point
         prev_centroid_time = unfiltered_centroids[i-1]['device_time_stamp']
         centroid_time = centroid['device_time_stamp']
         #if the time difference is greater than one measurement, then the previous point is the end of a fixation
-        if(abs(prev_centroid_time - centroid_time) > (1/FREQUENCY * 1000000)):
+        #added some flexibility with the +5 for minute differences in the frequency measurements
+        if(abs(prev_centroid_time - centroid_time) > (1/(FREQUENCY-5) * 1000000)):
             intermediary_centroids.append(previous_fixation)
             previous_fixation = gazeTupleToCentroidData(centroid)
         #otherwise, this point must be added to the previous fixation
@@ -337,15 +338,18 @@ def filter_centroids(unfiltered_centroids):
             x, y, z = getPointDomEye(centroid)
             previous_fixation.x.append(x)
             previous_fixation.y.append(y)
-    
+    #remove the duplicated first point
+    intermediary_centroids.pop(0)
+
     filtered_centroids = []
     i = 1
     while i < len(intermediary_centroids):
         # check if the current point is within the maximum time and angle between fixations
+        #print(i)
         centroid = intermediary_centroids[i]
         prev_centroid_time = intermediary_centroids[i-1].end
         centroid_time = centroid.start
-        print("centroid time:", centroid_time, "prev centroid time:", prev_centroid_time, "dif", abs(centroid_time - prev_centroid_time))
+        #print("centroid time:", centroid_time, "prev centroid time:", prev_centroid_time, "dif", abs(centroid_time - prev_centroid_time))
         if abs(centroid_time - prev_centroid_time) < maximum_time_between_fixations:
             # calculate angle between the last sample in the first fixation and the first sample in the second fixation
             origin = Point3D(intermediary_centroids[i-1].origin[0], intermediary_centroids[i-1].origin[1], intermediary_centroids[i-1].origin[2])
@@ -354,10 +358,6 @@ def filter_centroids(unfiltered_centroids):
             p2x, p2y = centroid.coords()
             point2 = Point3D(p2x, p2y, centroid.origin[2])
             angle = get_angular_distance(origin, point1, point2)
-            distance = math.sqrt(((intermediary_centroids[i-1].x[-1]-centroid.x[0])*width)**2 + ((intermediary_centroids[i-1].y[-1]-centroid.y[0])*height)**2)
-            print("ANGLE: ", angle, "distance: ", distance)
-            print("x", intermediary_centroids[i-1].x[-1], centroid.x[0], "y", intermediary_centroids[i-1].y[-1], centroid.y[0])
-            print()
             if angle < 0.5 :
                 # merge points
                 merged_centroid = intermediary_centroids[i-1]
@@ -370,14 +370,11 @@ def filter_centroids(unfiltered_centroids):
                 filtered_centroids.append(centroid)
         else:
             filtered_centroids.append(centroid)
-        print(centroid.id)
         i += 1
     for value in filtered_centroids:
         coordsx, coordsy = value.coords()
-        #print(coordsx, coordsy)
-        centroids_x.append(coordsx*width)
-        centroids_y.append(coordsy*height)
-    #print(len(filtered_centroids))
+        centroids_x.append(coordsx)
+        centroids_y.append(coordsy)
     return list(filtered_centroids)
 
 #calls the interpolateData, find_points_in_window, and gaze_angle functions.
