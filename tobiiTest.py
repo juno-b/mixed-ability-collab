@@ -340,6 +340,8 @@ def filter_centroids(unfiltered_centroids):
             previous_fixation.y.append(y)
     #remove the duplicated first point
     intermediary_centroids.pop(0)
+    for i in intermediary_centroids:
+        print(i.id)
 
     filtered_centroids = []
     i = 1
