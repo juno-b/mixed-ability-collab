@@ -26,6 +26,16 @@ import numpy as np
 import math
 from Point23D import Point3D
 from Point23D import get_angular_distance
+import sys
+
+# Set the angle filter amount for the I-VT filter in the filter_centroids fn
+# Check if command-line argument exists
+if len(sys.argv) > 1:
+    # Use the command-line argument
+    angle_cap = float(sys.argv[1])
+else:
+    # default from I-VT specification is .5
+    angle_cap = 0.75
 
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
@@ -76,17 +86,23 @@ def write_to_csv(data_to_write, centroid_data):
         writer.writerows(data_to_write)
     
     #centroid csv
-    headers2 = ['id', 'start', 'end', 'x', 'y']
+    headers2 = ['id', 'start', 'end', 'x_avg', 'y_avg', 'x_list', 'y_list', 'origin']
     with open('centroids.csv', 'w', newline='') as file2:
         writer = csv.DictWriter(file2, fieldnames=headers2)
         writer.writeheader()
         for centroid in centroid_data:
+            x, y = centroid.coords()
+            x_list = [item * width for item in centroid.x]
+            y_list = [item * height for item in centroid.y]
             writer.writerow({
                 'id': centroid.id,
                 'start': centroid.start,
                 'end': centroid.end,
-                'x': centroid.x,
-                'y': centroid.y
+                'x_avg': x,
+                'y_avg': y,
+                'x_list': x_list,
+                'y_list': y_list,
+                'origin': centroid.origin
             })
 
 #This function opens te eye tracker for the specified duration and then closes the connection
@@ -319,59 +335,39 @@ def gazeTupleToCentroidData(gazeTuple):
 
 #this function merges adjacent fixations using the maximum time and angle between fixations
 def filter_centroids(unfiltered_centroids):
+    #convert unfiltered data to CentroidData objects
     intermediary_centroids = []
-    intermediary_centroids.append(gazeTupleToCentroidData(unfiltered_centroids[0]))
-    previous_fixation = intermediary_centroids[0]
-    for i, centroid in enumerate(unfiltered_centroids[1:], start=1):
-        #check if device time stamp is within one measurement (based on the Hz of the tracker) of the previous point
-        prev_centroid_time = unfiltered_centroids[i-1]['device_time_stamp']
-        centroid_time = centroid['device_time_stamp']
-        #if the time difference is greater than one measurement, then the previous point is the end of a fixation
-        #added some flexibility with the +5 for minute differences in the frequency measurements
-        if(abs(prev_centroid_time - centroid_time) > (1/(FREQUENCY-5) * 1000000)):
-            intermediary_centroids.append(previous_fixation)
-            previous_fixation = gazeTupleToCentroidData(centroid)
-        #otherwise, this point must be added to the previous fixation
-        else:
-            previous_fixation.id.append(centroid['index'])
-            previous_fixation.end = centroid_time
-            x, y, z = getPointDomEye(centroid)
-            previous_fixation.x.append(x)
-            previous_fixation.y.append(y)
-    #remove the duplicated first point
-    intermediary_centroids.pop(0)
-    for i in intermediary_centroids:
-        print(i.id)
+    for centroid in unfiltered_centroids:
+        intermediary_centroids.append(gazeTupleToCentroidData(centroid))
 
     filtered_centroids = []
     i = 1
+    centroid_to_add = intermediary_centroids[0]
     while i < len(intermediary_centroids):
         # check if the current point is within the maximum time and angle between fixations
-        #print(i)
         centroid = intermediary_centroids[i]
-        prev_centroid_time = intermediary_centroids[i-1].end
+        prev_centroid_time = centroid_to_add.end
         centroid_time = centroid.start
-        #print("centroid time:", centroid_time, "prev centroid time:", prev_centroid_time, "dif", abs(centroid_time - prev_centroid_time))
         if abs(centroid_time - prev_centroid_time) < maximum_time_between_fixations:
             # calculate angle between the last sample in the first fixation and the first sample in the second fixation
-            origin = Point3D(intermediary_centroids[i-1].origin[0], intermediary_centroids[i-1].origin[1], intermediary_centroids[i-1].origin[2])
-            p1x, p1y = intermediary_centroids[i-1].coords()
-            point1 = Point3D(p1x, p1y, intermediary_centroids[i-1].origin[2])
+            origin = Point3D(centroid_to_add.origin[0], centroid_to_add.origin[1], centroid_to_add.origin[2])
+            p1x, p1y = centroid_to_add.coords()
+            point1 = Point3D(p1x, p1y, centroid_to_add.origin[2])
             p2x, p2y = centroid.coords()
             point2 = Point3D(p2x, p2y, centroid.origin[2])
             angle = get_angular_distance(origin, point1, point2)
-            if angle < 0.5 :
-                # merge points
-                merged_centroid = intermediary_centroids[i-1]
-                merged_centroid.id += centroid.id
-                merged_centroid.end = centroid.end
-                merged_centroid.x += centroid.x
-                merged_centroid.y += centroid.y
-                filtered_centroids.append(merged_centroid)
+            if angle < angle_cap : 
+                # merge to centroid to add
+                centroid_to_add.id += centroid.id
+                centroid_to_add.end = centroid.end
+                centroid_to_add.x += centroid.x
+                centroid_to_add.y += centroid.y
             else:
-                filtered_centroids.append(centroid)
+                filtered_centroids.append(centroid_to_add)
+                centroid_to_add = centroid
         else:
-            filtered_centroids.append(centroid)
+            filtered_centroids.append(centroid_to_add)
+            centroid_to_add = centroid
         i += 1
     for value in filtered_centroids:
         coordsx, coordsy = value.coords()
@@ -528,8 +524,8 @@ interpolatedData, centroidData = apply_ivt_filter(dominantEye)
 draw_unfiltered('Unfiltered')
 #plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
-graph(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y, 'Unfiltered Centroids', 'Filtered Centroids')
 write_to_csv(interpolatedData, centroidData)
+graph(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y, 'Unfiltered Centroids', 'Filtered Centroids')
 
 #TASKS
 #get additional data from the tobii sdk struct
