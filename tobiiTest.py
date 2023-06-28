@@ -453,7 +453,7 @@ def graph(x, y, title):
     plt.show()
 
 #This is a basic graphing function using two sets of x/y points and titles
-def graph(x1, y1, x2, y2, title1, title2):
+def graph2(x1, y1, x2, y2, title1, title2):
     plt.scatter(x1, y1, color='blue', label=title1)
     plt.scatter(x2, y2, color='red', label=title2)
     # Set the x and y limits
@@ -525,8 +525,12 @@ draw_unfiltered('Unfiltered')
 #plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
 write_to_csv(interpolatedData, centroidData)
-graph(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y, 'Unfiltered Centroids', 'Filtered Centroids')
+graph2(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y, 'Unfiltered Centroids', 'Filtered Centroids')
 
+
+testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
+testy = [0, 0,     400, 800, 400, 800, 400, 800,   height, height]
+graph(testx, testy, 'Calibration')
 #TASKS
 #get additional data from the tobii sdk struct
 
