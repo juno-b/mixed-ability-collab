@@ -27,6 +27,7 @@ import math
 from Point23D import Point3D
 from Point23D import get_angular_distance
 import sys
+from getDom import DomObjectRetriever, find_topmost_dom_object_children, setCoords
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -530,7 +531,13 @@ graph2(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y,
 
 testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
 testy = [0, 0,     400, 800, 400, 800, 400, 800,   height, height]
-graph(testx, testy, 'Calibration')
+#graph(testx, testy, 'Calibration')
+
+retriever = DomObjectRetriever()
+for i, x in enumerate(centroids_x):
+    setCoords(x, centroids_y[i])
+    root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
+    print(find_topmost_dom_object_children(topmost_dom_object, x, centroids_y[i]))
 #TASKS
 #get additional data from the tobii sdk struct
 
