@@ -62,12 +62,12 @@ def printDomObjectTree(dom_object, level=0):
         printDomObjectTree(child, level + 1)
 
 #If an object was found, find its children to get the exact DOM object at the specified coordinates
-if topmost_dom_object:
-    printControlObj("Topmost DOM Object", topmost_dom_object)
-    print("DOM Object Tree:")
+#if topmost_dom_object:
+    #printControlObj("Topmost DOM Object", topmost_dom_object)
+    #print("DOM Object Tree:")
     #printDomObjectTree(topmost_dom_object)
-else:
-    print("No DOM object found at the specified coordinates.")
+#else:
+    #print("No DOM object found at the specified coordinates.")
 
 #Find the absolute topmost object from the original DOM object's children
 def find_topmost_dom_object_children(dom_object, x, y):

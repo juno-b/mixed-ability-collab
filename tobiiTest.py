@@ -535,9 +535,10 @@ testy = [0, 0,     400, 800, 400, 800, 400, 800,   height, height]
 
 retriever = DomObjectRetriever()
 for i, x in enumerate(centroids_x):
-    setCoords(x, centroids_y[i])
-    root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
-    print(find_topmost_dom_object_children(topmost_dom_object, x, centroids_y[i]))
+    if x is not None:
+        setCoords(x, centroids_y[i])
+        root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
+        print(find_topmost_dom_object_children(topmost_dom_object, x, centroids_y[i]))
 #TASKS
 #get additional data from the tobii sdk struct
 
