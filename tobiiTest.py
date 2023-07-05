@@ -558,5 +558,3 @@ for i, x in enumerate(centroids_x):
 #accessibility DOM for screen readers
 #bounding boxes for elements, search the hierarchy looking for the x y location and report that
 #example applications: Chrome, Edge, Visual Studio
-
-#make a test website
