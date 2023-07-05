@@ -12,12 +12,18 @@ def setCoords(x, y):
     global coordsx, coordsy
     coordsx, coordsy = x, y
 
-#Class which gets the DOM object tree and the topmost DOM object at the specified coordinates
+# Class to retrieve and store the DOM object tree
 class DomObjectRetriever:
+    def __init__(self):
+        self.root = None
+        self.dom_objects = None
+
     def GetTree(self):
-        rc = auto.GetRootControl()
-        return rc, rc.GetChildren()
-    
+        if self.root is None or self.dom_objects is None:
+            self.root = auto.GetRootControl()
+            self.dom_objects = self.root.GetChildren()
+        return self.root, self.dom_objects
+
     def GetTopmostDomObject(self, x, y):
         root, dom_objects = self.GetTree()
 
@@ -28,7 +34,6 @@ class DomObjectRetriever:
             if bounding_rectangle.contains(x, y):
                 if topmost_dom_object is None or dom_object.searchDepth < topmost_dom_object.searchDepth:
                     topmost_dom_object = dom_object
-                    #print(dom_object)
 
         return root, dom_objects, topmost_dom_object
 
@@ -60,14 +65,6 @@ def printDomObjectTree(dom_object, level=0):
     print(prefix + dom_object.ClassName + dom_object.Name)
     for child in dom_object.GetChildren():
         printDomObjectTree(child, level + 1)
-
-#If an object was found, find its children to get the exact DOM object at the specified coordinates
-#if topmost_dom_object:
-    #printControlObj("Topmost DOM Object", topmost_dom_object)
-    #print("DOM Object Tree:")
-    #printDomObjectTree(topmost_dom_object)
-#else:
-    #print("No DOM object found at the specified coordinates.")
 
 #Find the absolute topmost object from the original DOM object's children
 def find_topmost_dom_object_children(dom_object, x, y):
