@@ -17,6 +17,8 @@ class DomObjectRetriever:
     def __init__(self):
         self.root = None
         self.dom_objects = None
+        self.topmost_dom_object = None
+        self.topmost_dom_object_area = None
 
     def GetTree(self):
         if self.root is None or self.dom_objects is None:
@@ -26,16 +28,34 @@ class DomObjectRetriever:
 
     def GetTopmostDomObject(self, x, y):
         root, dom_objects = self.GetTree()
-
         topmost_dom_object = None
 
         for dom_object in dom_objects:
+            print('TESTING ME 1', dom_object.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
             bounding_rectangle = dom_object.BoundingRectangle
+            bounding_area = bounding_rectangle.width() * bounding_rectangle.height()
             if bounding_rectangle.contains(x, y):
-                if topmost_dom_object is None or dom_object.searchDepth < topmost_dom_object.searchDepth:
+                if topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
                     topmost_dom_object = dom_object
+                    self.topmost_dom_object_area = bounding_rectangle.width() * bounding_rectangle.height()
+                    #print('TESTING ME 12', dom_object.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
+                    print('searching', dom_object, 'for', x, y)
+                    self.searchDescendants(dom_object, x, y)  # Search descendants recursively
 
         return root, dom_objects, topmost_dom_object
+
+    def searchDescendants(self, dom_object, x, y):
+        for child in dom_object.GetChildren():
+            bounding_rectangle = child.BoundingRectangle
+            bounding_area = bounding_rectangle.width() * bounding_rectangle.height()
+            if bounding_rectangle.contains(x, y):
+                print('found', child)
+                #print('Z', child.ZOrder)
+                print('TESTING ME 123', child.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
+                if self.topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
+                    print('setting topmost dom object to', child)
+                    self.topmost_dom_object = child
+                self.searchDescendants(child, x, y)
 
 retriever = DomObjectRetriever()
 root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(coordsx, coordsy)
@@ -68,6 +88,8 @@ def printDomObjectTree(dom_object, level=0):
 
 #Find the absolute topmost object from the original DOM object's children
 def find_topmost_dom_object_children(dom_object, x, y):
+    if dom_object is None:
+        return None
     topmost_dom_object = dom_object
     topmost_dom_object_bounding_rectangle = topmost_dom_object.BoundingRectangle
     topmost_dom_object_area = topmost_dom_object_bounding_rectangle.width() * topmost_dom_object_bounding_rectangle.height()
@@ -94,8 +116,8 @@ def find_topmost_dom_object_children(dom_object, x, y):
     return topmost_dom_object
 
 #Calls the necessary functions
-tdo = find_topmost_dom_object_children(topmost_dom_object, coordsx, coordsy)
-print('Result', tdo)
+#tdo = find_topmost_dom_object_children(topmost_dom_object, coordsx, coordsy)
+#print('Result', tdo)
 
 #UI Automation vs Accessibility DOM
 #NVDA github repo with accessibility DOM

@@ -518,15 +518,23 @@ def plot_trackbox_data(interpolatedData, title, origin, origin2):
     ax.legend()
     plt.show()
 
+def flip_y(cen_y):
+    newList = []
+    for y in cen_y:
+        newList.append(height - y)
+    return newList
+
 #call the necessary functions
 run_eyetracker(5)
 append_pixel_data()
 interpolatedData, centroidData = apply_ivt_filter(dominantEye)
+left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
 draw_unfiltered('Unfiltered')
 #plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
 write_to_csv(interpolatedData, centroidData)
-graph2(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, centroids_y, 'Unfiltered Centroids', 'Filtered Centroids')
+newY = flip_y(centroids_y)
+graph2(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids')
 
 
 testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
@@ -538,7 +546,7 @@ for i, x in enumerate(centroids_x):
     if x is not None:
         setCoords(x, centroids_y[i])
         root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
-        print(find_topmost_dom_object_children(topmost_dom_object, x, centroids_y[i]))
+        print(topmost_dom_object)
 #TASKS
 #get additional data from the tobii sdk struct
 
