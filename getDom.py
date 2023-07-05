@@ -3,6 +3,7 @@ from pywinauto import Desktop, Application
 from pywinauto.findwindows import ElementNotFoundError
 import pygetwindow as gw
 import sys
+import win32gui
 
 coordsx = 100
 coordsy = 100
@@ -29,17 +30,17 @@ class DomObjectRetriever:
     def GetTopmostDomObject(self, x, y):
         root, dom_objects = self.GetTree()
         topmost_dom_object = None
+        #print('TESTING ME', root, root.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
 
         for dom_object in dom_objects:
-            print('TESTING ME 1', dom_object.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
+            print(dom_object)
+            print(dom_object.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
             bounding_rectangle = dom_object.BoundingRectangle
             bounding_area = bounding_rectangle.width() * bounding_rectangle.height()
             if bounding_rectangle.contains(x, y):
                 if topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
                     topmost_dom_object = dom_object
                     self.topmost_dom_object_area = bounding_rectangle.width() * bounding_rectangle.height()
-                    #print('TESTING ME 12', dom_object.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
-                    print('searching', dom_object, 'for', x, y)
                     self.searchDescendants(dom_object, x, y)  # Search descendants recursively
 
         return root, dom_objects, topmost_dom_object
@@ -49,16 +50,20 @@ class DomObjectRetriever:
             bounding_rectangle = child.BoundingRectangle
             bounding_area = bounding_rectangle.width() * bounding_rectangle.height()
             if bounding_rectangle.contains(x, y):
-                print('found', child)
-                #print('Z', child.ZOrder)
-                print('TESTING ME 123', child.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
                 if self.topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
-                    print('setting topmost dom object to', child)
                     self.topmost_dom_object = child
+                    print('C', child)
+                    print(child.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
                 self.searchDescendants(child, x, y)
 
 retriever = DomObjectRetriever()
+#while True:
 root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(coordsx, coordsy)
+while True:
+    a = win32gui.GetActiveWindow()
+    print('AW', a)
+    if a != 0:
+        break
 
 #Function to print a control object
 def printControlObj(name, obj):

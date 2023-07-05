@@ -534,7 +534,8 @@ draw_unfiltered('Unfiltered')
 #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
 write_to_csv(interpolatedData, centroidData)
 newY = flip_y(centroids_y)
-graph2(unfiltered_centroids_x, unfiltered_centroids_y, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids')
+newuY = flip_y(unfiltered_centroids_y)
+graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids')
 
 
 testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
@@ -557,3 +558,5 @@ for i, x in enumerate(centroids_x):
 #accessibility DOM for screen readers
 #bounding boxes for elements, search the hierarchy looking for the x y location and report that
 #example applications: Chrome, Edge, Visual Studio
+
+#make a test website
