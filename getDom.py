@@ -5,8 +5,8 @@ import pygetwindow as gw
 import sys
 import win32gui
 
-coordsx = 100
-coordsy = 100
+coordsx = 200
+coordsy = 200
 
 #function to set coordinates from the eye tracker centroid
 def setCoords(x, y):
@@ -31,19 +31,24 @@ class DomObjectRetriever:
         root, dom_objects = self.GetTree()
         topmost_dom_object = None
         #print('TESTING ME', root, root.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
-
+        foregroundWindow = win32gui.GetForegroundWindow()
+        #print('Foreground window', foregroundWindow)
         for dom_object in dom_objects:
-            print(dom_object)
-            print(dom_object.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
+            #print(dom_object)
+            windowHandle = dom_object.NativeWindowHandle
+            #print(windowHandle)
             bounding_rectangle = dom_object.BoundingRectangle
             bounding_area = bounding_rectangle.width() * bounding_rectangle.height()
-            if bounding_rectangle.contains(x, y):
+            if (foregroundWindow == windowHandle) & bounding_rectangle.contains(x, y):
+                #print()
+                #print('condition triggered')
+                #print()
                 if topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
                     topmost_dom_object = dom_object
                     self.topmost_dom_object_area = bounding_rectangle.width() * bounding_rectangle.height()
                     self.searchDescendants(dom_object, x, y)  # Search descendants recursively
 
-        return root, dom_objects, topmost_dom_object
+        return root, dom_objects, self.topmost_dom_object
 
     def searchDescendants(self, dom_object, x, y):
         for child in dom_object.GetChildren():
@@ -52,18 +57,12 @@ class DomObjectRetriever:
             if bounding_rectangle.contains(x, y):
                 if self.topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
                     self.topmost_dom_object = child
-                    print('C', child)
-                    print(child.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
+                    self.topmost_dom_object_area = bounding_rectangle.width() * bounding_rectangle.height()
+                    #print('C', child)
+                    #print(child.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
                 self.searchDescendants(child, x, y)
 
-retriever = DomObjectRetriever()
-#while True:
-root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(coordsx, coordsy)
-while True:
-    a = win32gui.GetActiveWindow()
-    print('AW', a)
-    if a != 0:
-        break
+
 
 #Function to print a control object
 def printControlObj(name, obj):
@@ -75,7 +74,7 @@ def printControlObj(name, obj):
     print("\tName:", obj.Name)
 
 #Function to print the DOM object tree, calls printDomObjectTree
-def printTree():
+def printTree(topmost_dom_object, root, dom_objects):
     printControlObj("Topmost:", topmost_dom_object)
     printControlObj("Root:", root)
     print("Dom Objects:")
