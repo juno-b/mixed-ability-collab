@@ -23,11 +23,12 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation as fa
 import numpy as np
+from scipy.spatial import ConvexHull, convex_hull_plot_2d
 import math
 from Point23D import Point3D
 from Point23D import get_angular_distance
 import sys
-from getDom import DomObjectRetriever, find_topmost_dom_object_children, setCoords
+from getDom import DomObjectRetriever, setCoords
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -518,6 +519,28 @@ def plot_trackbox_data(interpolatedData, title, origin, origin2):
     ax.legend()
     plt.show()
 
+#Plots the convex hull of calculated centroid points
+def convex_hull_plot(centroidData, title):
+    convex_list = []
+    for centroid in centroidData:
+        x_adj = [value * width for value in centroid.x]
+        y_adj = [value * height for value in centroid.y]
+        points = list(zip(x_adj, y_adj))
+        if len(points) > 3:
+            convex_list.append(ConvexHull(points))
+    # Plotting convex hulls
+    for hull in convex_list:
+        plt.plot(hull.points[:, 0], hull.points[:, 1], 'o')
+        for simplex in hull.simplices:
+            plt.plot(hull.points[simplex, 0], hull.points[simplex, 1], 'k-')
+    plt.title(title)
+    # Set the x and y limits
+    plt.xlim(0, width)
+    plt.ylim(0, height)
+    plt.show()
+    return convex_list
+
+#flips the directionality of a set of coordinates
 def flip_y(cen_y):
     newList = []
     for y in cen_y:
@@ -532,10 +555,12 @@ left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
 draw_unfiltered('Unfiltered')
 #plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
-write_to_csv(interpolatedData, centroidData)
+#flip the y values so that the origin is in the bottom left corner
 newY = flip_y(centroids_y)
 newuY = flip_y(unfiltered_centroids_y)
 graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids')
+convex_list = convex_hull_plot(centroidData, 'Convex Hull')
+write_to_csv(interpolatedData, centroidData)
 
 
 testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
