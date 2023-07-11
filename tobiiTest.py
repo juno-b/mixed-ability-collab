@@ -29,6 +29,7 @@ from Point23D import Point3D
 from Point23D import get_angular_distance
 import sys
 from getDom import DomObjectRetriever, setCoords
+import matplotlib.image as mpimg
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -37,7 +38,7 @@ if len(sys.argv) > 1:
     angle_cap = float(sys.argv[1])
 else:
     # default from I-VT specification is .5
-    angle_cap = 0.75
+    angle_cap = 0.75 
 
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
@@ -57,7 +58,7 @@ unfiltered_centroids_x, unfiltered_centroids_y = [], []
 velocity_threshold = 30                     # maximum angle to be considered a fixation, default 30 degrees
 maximum_interpolation_time_micro = 75000    # maximum allowed time for interpolation in microseconds
 maximum_time_between_fixations = 75000      # maximumm allowed time between fixations in microseconds
-maximum_angle_between_fixations = 0.5       # maximum angle between fixations in degrees
+maximum_angle_between_fixations = angle_cap # maximum angle between fixations in degrees, default from I-VT specification is .5
 minimum_fixation_duration = 60000           # minimum fixation duration in microseconds
 window_size_seconds = 0.01    # maximum time on either side of the spanning window for velocity calculations, default 10 ms --> 0.01 seconds
 
@@ -519,27 +520,6 @@ def plot_trackbox_data(interpolatedData, title, origin, origin2):
     ax.legend()
     plt.show()
 
-#Plots the convex hull of calculated centroid points
-def convex_hull_plot(centroidData, title):
-    convex_list = []
-    for centroid in centroidData:
-        x_adj = [value * width for value in centroid.x]
-        y_adj = [value * height for value in centroid.y]
-        points = list(zip(x_adj, y_adj))
-        if len(points) > 3:
-            convex_list.append(ConvexHull(points))
-    # Plotting convex hulls
-    for hull in convex_list:
-        plt.plot(hull.points[:, 0], hull.points[:, 1], 'o')
-        for simplex in hull.simplices:
-            plt.plot(hull.points[simplex, 0], hull.points[simplex, 1], 'k-')
-    plt.title(title)
-    # Set the x and y limits
-    plt.xlim(0, width)
-    plt.ylim(0, height)
-    plt.show()
-    return convex_list
-
 #flips the directionality of a set of coordinates
 def flip_y(cen_y):
     newList = []
@@ -547,8 +527,69 @@ def flip_y(cen_y):
         newList.append(height - y)
     return newList
 
+def convex_hull_plot(centroidData, title, image_path):
+    convex_list = []
+    plot_number = 1  # Counter for plot numbers
+
+    # Load the image
+    img = mpimg.imread(image_path)
+
+    for centroid in centroidData:
+        x_adj = [value * width for value in centroid.x]
+        y = [value * height for value in centroid.y]
+        y_adj = flip_y(y)
+        points = list(zip(x_adj, y_adj))
+        if len(points) > 3:
+            convex_list.append(ConvexHull(points))
+
+    # Plotting convex hulls with the image as the background
+    fig, ax = plt.subplots()
+    ax.imshow(img, extent=[0, width, 0, height])
+
+    for hull in convex_list:
+        ax.plot(hull.points[:, 0], hull.points[:, 1], 'o')
+        for simplex in hull.simplices:
+            ax.plot(hull.points[simplex, 0], hull.points[simplex, 1], 'k-')
+
+        # Add plot number as text annotation
+        centroid = hull.points.mean(axis=0)
+        ax.text(centroid[0], centroid[1], str(plot_number), ha='center', va='center')
+        plot_number += 1
+
+    plt.title(title)
+    # Set the x and y limits
+    plt.xlim(0, width)
+    plt.ylim(0, height)
+    plt.show()
+
+    return convex_list
+
+def is_within_boundary(x, y, boundary):
+    x_min, y_min, x_max, y_max = boundary
+    return x_min <= x <= x_max and y_min <= y <= y_max
+
+def check_in_bounds(x, y):
+    areas_of_interest = [
+        [0, 0, 1200, 50], #taskbar
+        [0, 50, 1200, 140], #footer bar
+        [265, 180, 715, 1080], #left column
+        [730, 233, 1635, 477], #bottom right box
+        [730, 493, 1635, 1080], #top right box
+    ]
+    area_names = [
+        "Taskbar",
+        "Footer Bar",
+        "Left Column",
+        "Bottom Right Box",
+        "Top Right Box"
+    ]
+    for aoi, name in zip(areas_of_interest, area_names):
+        if is_within_boundary(x, y, aoi):
+            #print(x, y)
+            print(name)
+
 #call the necessary functions
-run_eyetracker(5)
+run_eyetracker(10)
 append_pixel_data()
 interpolatedData, centroidData = apply_ivt_filter(dominantEye)
 left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
@@ -559,12 +600,11 @@ draw_unfiltered('Unfiltered')
 newY = flip_y(centroids_y)
 newuY = flip_y(unfiltered_centroids_y)
 graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids')
-convex_list = convex_hull_plot(centroidData, 'Convex Hull')
+convex_list = convex_hull_plot(centroidData, 'Convex Hull', 'images/test.png')
 write_to_csv(interpolatedData, centroidData)
 
-
-testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
-testy = [0, 0,     400, 800, 400, 800, 400, 800,   height, height]
+#testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
+#testy = [0, 0,     400, 800, 400, 800, 400, 800,   height, height]
 #graph(testx, testy, 'Calibration')
 
 retriever = DomObjectRetriever()
@@ -573,6 +613,7 @@ for i, x in enumerate(centroids_x):
         setCoords(x, centroids_y[i])
         root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
         print(topmost_dom_object)
+        check_in_bounds(x, abs(1200-centroids_y[i]))
 #TASKS
 #get additional data from the tobii sdk struct
 

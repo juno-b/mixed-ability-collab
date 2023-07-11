@@ -30,19 +30,12 @@ class DomObjectRetriever:
     def GetTopmostDomObject(self, x, y):
         root, dom_objects = self.GetTree()
         topmost_dom_object = None
-        #print('TESTING ME', root, root.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
         foregroundWindow = win32gui.GetForegroundWindow()
-        #print('Foreground window', foregroundWindow)
         for dom_object in dom_objects:
-            #print(dom_object)
             windowHandle = dom_object.NativeWindowHandle
-            #print(windowHandle)
             bounding_rectangle = dom_object.BoundingRectangle
             bounding_area = bounding_rectangle.width() * bounding_rectangle.height()
             if (foregroundWindow == windowHandle) & bounding_rectangle.contains(x, y):
-                #print()
-                #print('condition triggered')
-                #print()
                 if topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
                     topmost_dom_object = dom_object
                     self.topmost_dom_object_area = bounding_rectangle.width() * bounding_rectangle.height()
@@ -58,8 +51,6 @@ class DomObjectRetriever:
                 if self.topmost_dom_object is None or (bounding_area < self.topmost_dom_object_area):
                     self.topmost_dom_object = child
                     self.topmost_dom_object_area = bounding_rectangle.width() * bounding_rectangle.height()
-                    #print('C', child)
-                    #print(child.GetPropertyValue(auto.PropertyId.WindowIsTopmostProperty))
                 self.searchDescendants(child, x, y)
 
 
