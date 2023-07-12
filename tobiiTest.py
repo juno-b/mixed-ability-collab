@@ -23,7 +23,7 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation as fa
 import numpy as np
-from scipy.spatial import ConvexHull, convex_hull_plot_2d
+from scipy.spatial import ConvexHull
 import math
 from Point23D import Point3D
 from Point23D import get_angular_distance
@@ -38,7 +38,7 @@ if len(sys.argv) > 1:
     angle_cap = float(sys.argv[1])
 else:
     # default from I-VT specification is .5
-    angle_cap = 0.75 
+    angle_cap = 0.65
 
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
@@ -388,7 +388,13 @@ def apply_ivt_filter(dominantEye):
     return interpolatedGazeData, centroidData
 
 #This function draws the unfiltered and interpolated data 
-def draw_unfiltered(title):
+def draw_unfiltered(title, image_path):
+    # Load the image
+    img = mpimg.imread(image_path)
+    # Plotting convex hulls with the image as the background
+    fig, ax = plt.subplots()
+    ax.imshow(img, extent=[0, width, 0, height])
+    
     # Plot the new scatter plot with the updated data
     plt.scatter(left_x, left_y, color='blue', label='Left Eye')
     plt.scatter(right_x, right_y, color='red', label='Right Eye')
@@ -456,7 +462,12 @@ def graph(x, y, title):
     plt.show()
 
 #This is a basic graphing function using two sets of x/y points and titles
-def graph2(x1, y1, x2, y2, title1, title2):
+def graph2(x1, y1, x2, y2, title1, title2, image_path):
+    # Load the image
+    img = mpimg.imread(image_path)
+    # Plotting convex hulls with the image as the background
+    fig, ax = plt.subplots()
+    ax.imshow(img, extent=[0, width, 0, height])
     plt.scatter(x1, y1, color='blue', label=title1)
     plt.scatter(x2, y2, color='red', label=title2)
     # Set the x and y limits
@@ -593,13 +604,13 @@ run_eyetracker(10)
 append_pixel_data()
 interpolatedData, centroidData = apply_ivt_filter(dominantEye)
 left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
-draw_unfiltered('Unfiltered')
+draw_unfiltered('Unfiltered', 'images/test.png')
 #plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
 #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
 #flip the y values so that the origin is in the bottom left corner
 newY = flip_y(centroids_y)
 newuY = flip_y(unfiltered_centroids_y)
-graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids')
+graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids', 'images/test.png')
 convex_list = convex_hull_plot(centroidData, 'Convex Hull', 'images/test.png')
 write_to_csv(interpolatedData, centroidData)
 
