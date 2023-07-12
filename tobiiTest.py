@@ -30,6 +30,7 @@ from Point23D import get_angular_distance
 import sys
 from getDom import DomObjectRetriever, setCoords
 import matplotlib.image as mpimg
+from collections import deque
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -599,24 +600,25 @@ def check_in_bounds(x, y):
             #print(x, y)
             print(name)
 
-#call the necessary functions
-run_eyetracker(10)
-append_pixel_data()
-interpolatedData, centroidData = apply_ivt_filter(dominantEye)
-left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
-draw_unfiltered('Unfiltered', 'images/test.png')
-#plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
-#plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
-#flip the y values so that the origin is in the bottom left corner
+interpolatedData, centroidData = [], []
+#The testing version of this code which did not support live interpolation and filtering
+def run_test():
+    run_eyetracker(10)
+    append_pixel_data()
+    global interpolatedData, centroidData
+    interpolatedData, centroidData = apply_ivt_filter(dominantEye)
+    left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
+    draw_unfiltered('Unfiltered', 'images/test.png')
+    #3D plots which show the user gaze in both coordinate systems
+    #plot_trackbox_data(interpolatedData, 'Trackbox Coordinate System', 'left_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_trackbox_coordinate_system')
+    #plot_trackbox_data(interpolatedData, 'User Coordinate System', 'left_gaze_origin_in_user_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system')
+    #flip the y values so that the origin is in the bottom left corner
+
 newY = flip_y(centroids_y)
 newuY = flip_y(unfiltered_centroids_y)
 graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids', 'images/test.png')
 convex_list = convex_hull_plot(centroidData, 'Convex Hull', 'images/test.png')
 write_to_csv(interpolatedData, centroidData)
-
-#testx = [0, width, 0, 0,     500, 500, 1000, 1000, 0,      width]
-#testy = [0, 0,     400, 800, 400, 800, 400, 800,   height, height]
-#graph(testx, testy, 'Calibration')
 
 retriever = DomObjectRetriever()
 for i, x in enumerate(centroids_x):
@@ -625,6 +627,8 @@ for i, x in enumerate(centroids_x):
         root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
         print(topmost_dom_object)
         check_in_bounds(x, abs(1200-centroids_y[i]))
+
+run_test()
 #TASKS
 #get additional data from the tobii sdk struct
 
