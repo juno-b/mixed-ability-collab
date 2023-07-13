@@ -135,6 +135,7 @@ def interpolate_gaze_data(start, current):
             gaze_data_list[x][inter_gotcs] = interpolated_data2[i]
             gaze_data_list[x][inter_goucs] = interpolated_data3[i]
             i+=1
+            #print('live interpolation at index ' + str(x), gaze_data_list[x][inter_poda])
 
 #This callback function adds gaze data from the eye tracker to the global gaze_data_list and interpolates the data live
 def gaze_data_callback(gaze_data):
@@ -228,89 +229,6 @@ def write_to_csv(data_to_write):#, centroid_data):
 def interpolateLiveData():
     window_size = math.floor(maximum_interpolation_time_micro / 1000000 * FREQUENCY)
     print(window_size)
-
-#This function interpolates data for gaze coordinates on the screen and the eye positions in the trackbox XYZ coordinate system
-def interpolateData(dominantEye):
-    interpolatedGazeData = gaze_data_list.copy()
-    prev_valid_index = None
-    for i, gaze_data in enumerate(gaze_data_list):
-        interpolatedGazeData[i]['inter_gaze_origin_validity'] = 0
-        interpolatedGazeData[i]['index'] = i
-        gaze_point = None
-        #Determine if there is data available from the dominant eye
-        #use this to set gaze_point as the point on the display area from the appropriate eye
-        if (dominantEye == 'left') & (gaze_data['left_gaze_point_validity'] == 1) & (not math.isnan(gaze_data['left_gaze_point_on_display_area'][0])):
-                gaze_point = [gaze_data['left_gaze_point_on_display_area'], gaze_data['left_gaze_origin_in_trackbox_coordinate_system'], gaze_data['left_gaze_origin_in_user_coordinate_system']]
-                interpolatedGazeData[i]['selected_eye'] = 'left'
-        elif (dominantEye == 'right') & (gaze_data['right_gaze_point_validity'] == 1) & (not math.isnan(gaze_data['right_gaze_point_on_display_area'][0])):
-                gaze_point = [gaze_data['right_gaze_point_on_display_area'], gaze_data['right_gaze_origin_in_trackbox_coordinate_system']], gaze_data['right_gaze_origin_in_user_coordinate_system']
-                interpolatedGazeData[i]['selected_eye'] = 'right'
-        if gaze_point is not None:
-            if prev_valid_index is not None:
-                prev_valid_gaze_data = interpolatedGazeData[prev_valid_index]
-
-                # Calculate the time gap between the current and previous valid points
-                delta_t = abs(gaze_data['device_time_stamp'] - prev_valid_gaze_data['device_time_stamp'])
-
-                #we also need to interpolate the origin in the trackbox and user coordinate systems
-                if delta_t <= maximum_interpolation_time_micro:
-                    # Calculate the slope for linear interpolation of gaze point
-                    x1, y1 = prev_valid_gaze_data['left_gaze_point_on_display_area'] if dominantEye == 'left' else prev_valid_gaze_data['right_gaze_point_on_display_area']
-                    x2, y2 = gaze_point[0]
-                    x_slope = (x2 - x1) / delta_t
-                    y_slope = (y2 - y1) / delta_t
-
-                    # Slope for x, y, and z of the trackbox coordinate system
-                    trackbox_x2, trackbox_y2, trackbox_z2 = gaze_point[1]
-                    trackbox_x1, trackbox_y1, trackbox_z1 = prev_valid_gaze_data['left_gaze_origin_in_trackbox_coordinate_system']
-                    if(prev_valid_gaze_data['selected_eye'] == 'right'):
-                        trackbox_x1, trackbox_y1, trackbox_z1 = prev_valid_gaze_data['right_gaze_origin_in_trackbox_coordinate_system']
-                    elif(prev_valid_gaze_data['selected_eye'] == 'inter'):
-                        trackbox_x1, trackbox_y1, trackbox_z1 = prev_valid_gaze_data['inter_gaze_origin_in_trackbox_coordinate_system']
-                    
-                    tbx_slope = (trackbox_x2 - trackbox_x1) / delta_t
-                    tby_slope = (trackbox_y2 - trackbox_y1) / delta_t
-                    tbz_slope = (trackbox_z2 - trackbox_z1) / delta_t
-
-                    # Slope for x, y, and z of the user coordinate system
-                    user_x2, user_y2, user_z2 = gaze_point[2]
-                    user_x1, user_y1, user_z1 = prev_valid_gaze_data['left_gaze_origin_in_user_coordinate_system']
-                    if(prev_valid_gaze_data['selected_eye'] == 'right'):
-                        user_x1, user_y1, user_z1 = prev_valid_gaze_data['right_gaze_origin_in_user_coordinate_system']
-                    elif(prev_valid_gaze_data['selected_eye'] == 'inter'):
-                        user_x1, user_y1, user_z1 = prev_valid_gaze_data['inter_gaze_origin_in_user_coordinate_system']
-                    
-                    ucx_slope = (user_x2 - user_x1) / delta_t
-                    ucy_slope = (user_y2 - user_y1) / delta_t
-                    ucz_slope = (user_z2 - user_z1) / delta_t
-                    
-                    #declaring the timestamp and distance dt
-                    t = prev_valid_gaze_data['device_time_stamp']
-                    dt = 0
-                    # Fill in the missing data points as a line drawn between the valid points
-                    for j in range(prev_valid_index + 1, i):
-                        dt = gaze_data_list[j]['device_time_stamp']-t 
-                        x_interpolated = x_slope * dt + x1
-                        y_interpolated = y_slope * dt + y1
-
-                        tbx_inter = tbx_slope * dt + trackbox_x1
-                        tby_inter = tby_slope * dt + trackbox_y1
-                        tbz_inter = tbz_slope * dt + trackbox_z1
-
-                        ucx_inter = ucx_slope * dt + user_x1
-                        ucy_inter = ucy_slope * dt + user_y1
-                        ucz_inter = ucz_slope * dt + user_z1
-                        
-                        #add to global lists for plotting
-                        inter_x.append(x_interpolated*width), inter_y.append(y_interpolated*height)
-
-                        interpolatedGazeData[j]['inter_gaze_point_on_display_area'] = [x_interpolated, y_interpolated]
-                        interpolatedGazeData[j]['selected_eye'] = 'inter'
-                        interpolatedGazeData[j]['inter_gaze_origin_validity'] = 1
-                        interpolatedGazeData[j]['inter_gaze_origin_in_trackbox_coordinate_system'] = [tbx_inter, tby_inter, tbz_inter]
-                        interpolatedGazeData[j]['inter_gaze_origin_in_user_coordinate_system'] = [ucx_inter, ucy_inter, ucz_inter]
-            prev_valid_index = i
-    return interpolatedGazeData
 
 #adds the index of the point within the window furthest before (window_1) and after (window_2) each gaze point
 def find_points_in_window(gaze_points):
@@ -496,7 +414,7 @@ def filter_centroids(unfiltered_centroids):
 #calls the interpolateData, find_points_in_window, and gaze_angle functions.
 #uses this data in calculate_velocity and filters the points to centroids, which are then merged. 
 def apply_ivt_filter(dominantEye):
-    interpolatedGazeData = interpolateData(dominantEye)
+    interpolatedGazeData = []#interpolateData(dominantEye)
     pointsData = find_points_in_window(interpolatedGazeData)
     angleVelocityData = gaze_angle_velocity(pointsData)
     centroidData = find_centroids(angleVelocityData)
