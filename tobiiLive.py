@@ -64,11 +64,11 @@ unfiltered_centroids_x, unfiltered_centroids_y = [], []
 global_gaze_index, num_values_to_interpolate, prev_valid_point, prev_valid_time, prev_valid_idx, flag_interpolation = 0, 0, None, -1, -1, False
 
 #Switch based on the dominant eye of the participant
-dominantEye = 'left'
+dominant_eye = 'left'
 #dominantEye = 'right'
      
 #set selected traits from the gaze data list based on the dominant eye
-if dominantEye == 'left':
+if dominant_eye == 'left':
     selected_poda = 'left_gaze_point_on_display_area'
     selected_gova = 'left_gaze_origin_validity'
     selected_gotcs = 'left_gaze_origin_in_trackbox_coordinate_system'
@@ -84,7 +84,7 @@ inter_gotcs = 'inter_gaze_origin_in_trackbox_coordinate_system'
 inter_goucs = 'inter_gaze_origin_in_user_coordinate_system'
 
 #This function completes basic linear interpolation for 2 and 3-variable arrays
-def inter_helper(indices, criteria):
+def linear_interpolation(indices, criteria):
     global gaze_data_list, prev_valid_time
     #calculate the start and end points, time difference, and slope
     delta_t = gaze_data_list[indices[-1]]['device_time_stamp'] - prev_valid_time
@@ -121,8 +121,8 @@ def interpolate_gaze_data(start, current):
     global gaze_data_list
     indices = range(start, current)
     #call the linear interpolation function for the desired variables (e.g. gaze on display area, location in trackbox/user coordinate systems)
-    interpolated_data1, interpolated_data2, interpolated_data3 = inter_helper(indices, selected_poda), inter_helper(indices, 
-        selected_gotcs), inter_helper(indices, selected_goucs)
+    interpolated_data1, interpolated_data2, interpolated_data3 = linear_interpolation(indices, selected_poda), linear_interpolation(indices, 
+        selected_gotcs), linear_interpolation(indices, selected_goucs)
     i = 0
     for x in indices:
         #this if statement excludes the valid points used for the interpolation
@@ -135,29 +135,9 @@ def interpolate_gaze_data(start, current):
             i+=1
             #print('live interpolation at index ' + str(x), gaze_data_list[x][inter_poda])
 
-#This callback function adds gaze data from the eye tracker to the global gaze_data_list and interpolates the data live
-def gaze_data_callback(gaze_data):
-    global prev_valid_point, prev_valid_time, prev_valid_idx, flag_interpolation, gaze_data_list, global_gaze_index
-    #append the gaze data to the list
-    gaze_data_list.append(gaze_data)
-    #the selected eye variable is set to the dominant eye if data is available, inter if interpolated, and none otherwise
-    gaze_data['selected_eye'] = 'none'
-    gaze_data['index'] = global_gaze_index
-    global_gaze_index += 1
-    #these variables are adjusted to pixel values based on the height and width of the screen
-    lx, ly = gaze_data['left_gaze_point_on_display_area']
-    rx, ry = gaze_data['right_gaze_point_on_display_area']
-    if (not(math.isnan(rx))):
-       rx, ry = rx * width, ry * height
-       gaze_data['right_gaze_point_on_display_area'] = [rx, ry]
-       if dominantEye == 'right':
-           gaze_data['selected_eye'] = dominantEye
-    if (not math.isnan(lx)):
-        lx, ly = lx * width, ly * height
-        gaze_data['left_gaze_point_on_display_area'] = [lx, ly]
-        if dominantEye == 'left':
-            gaze_data['selected_eye'] = dominantEye
-
+#This function checks if interpolation needs to occur, if so it calls the interpolation function
+def check_interpolation(gaze_data):
+    global prev_valid_point, prev_valid_time, prev_valid_idx, flag_interpolation, gaze_data_list
     # Interpolation works as follows: maintain an index of the last valid data point.
     # If nans are encountered and another valid data point occurs within the time threshold, interpolate the data
     timestamp = gaze_data['device_time_stamp']
@@ -180,19 +160,39 @@ def gaze_data_callback(gaze_data):
         prev_valid_time = timestamp
         prev_valid_idx = gaze_data['index']
 
+#This callback function adds gaze data from the eye tracker to the global gaze_data_list and interpolates the data live
+def gaze_data_callback(gaze_data):
+    #append the gaze data to the list
+    gaze_data_list.append(append_pixel_data(gaze_data))
+    #check if interpolation needs to happen for this data point
+    check_interpolation(gaze_data)
+
 #This function opens te eye tracker for the specified duration and then closes the connection
 def run_eyetracker(duration):
     eyetracker.subscribe_to(tr.EYETRACKER_GAZE_DATA, gaze_data_callback, as_dictionary=True)
     time.sleep(duration)
     eyetracker.unsubscribe_from(tr.EYETRACKER_GAZE_DATA, gaze_data_callback)
 
-#This function x-y coordinates of the gaze in pixels and adds them to the global lists, since the API returns them as fractional values
-def append_pixel_data():
-    for row in gaze_data_list:
-        left_x.append(row['left_gaze_point_on_display_area'][0]*width)
-        left_y.append(row['left_gaze_point_on_display_area'][1]*height)
-        right_x.append(row['right_gaze_point_on_display_area'][0]*width)
-        right_y.append(row['right_gaze_point_on_display_area'][1]*height)
+#This function modifies the gaze data to be in pixels rather than fractional values and adds the helper selected eye variable
+def append_pixel_data(gaze_data):
+    global global_gaze_index
+    #the selected eye variable is set to the dominant eye if data is available, inter if interpolated, and none otherwise
+    gaze_data['selected_eye'] = 'none'
+    gaze_data['index'] = global_gaze_index
+    global_gaze_index += 1
+    #these variables are adjusted to pixel values based on the height and width of the screen
+    lx, ly = gaze_data['left_gaze_point_on_display_area']
+    rx, ry = gaze_data['right_gaze_point_on_display_area']
+    if (not(math.isnan(rx))):
+       rx, ry = rx * width, ry * height
+       gaze_data['right_gaze_point_on_display_area'] = [rx, ry]
+       if dominant_eye == 'right':
+           gaze_data['selected_eye'] = dominant_eye
+    if (not math.isnan(lx)):
+        lx, ly = lx * width, ly * height
+        gaze_data['left_gaze_point_on_display_area'] = [lx, ly]
+        if dominant_eye == 'left':
+            gaze_data['selected_eye'] = dominant_eye
 
 #This function writes data to a csv file. Additional data column header values should be added to headers/headers2.extend as necessary
 def write_to_csv(data_to_write):#, centroid_data):
@@ -251,7 +251,7 @@ def find_points_in_window(gaze_points):
 def get_user_screen_pos(gaze_data):
     user_pos, screen_pos = None, None
     #determine x, y, and z in the coordinate system and the user's gaze on the display as tuples
-    if dominantEye == 'left':
+    if dominant_eye == 'left':
         if gaze_data['left_gaze_origin_validity'] == 1:
             user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
             screen_pos = gaze_data['left_gaze_point_on_display_area']
@@ -268,8 +268,8 @@ def get_user_screen_pos(gaze_data):
     return user_pos, screen_pos
 
 #this function finds the gaze angle for the points within the window
-def gaze_angle_velocity(interpolatedGazeData):
-    for i, gaze_data in enumerate(interpolatedGazeData):
+def gaze_angle_velocity(interpolated_gaze_data):
+    for i, gaze_data in enumerate(interpolated_gaze_data):
         prev_point_user, prev_point_screen, next_point_user, next_point_screen, window_1, window_2 = None, None, None, None, None, None
         user_pos, screen_pos = get_user_screen_pos(gaze_data)
         try:
@@ -278,8 +278,8 @@ def gaze_angle_velocity(interpolatedGazeData):
         except KeyError:
             continue
         if((not math.isnan(window_1)) & (not math.isnan(window_2)) & (user_pos is not None)):
-            prev_point_user, prev_point_screen = get_user_screen_pos(interpolatedGazeData[window_1])
-            next_point_user, next_point_screen = get_user_screen_pos(interpolatedGazeData[window_2])
+            prev_point_user, prev_point_screen = get_user_screen_pos(interpolated_gaze_data[window_1])
+            next_point_user, next_point_screen = get_user_screen_pos(interpolated_gaze_data[window_2])
             if((prev_point_screen is not None) and (next_point_screen is not None)):
                 user_origin = Point3D(user_pos[0], user_pos[1], user_pos[2])
                 prev_point = Point3D(prev_point_screen[0]*width, prev_point_screen[1]*height, user_pos[2])
@@ -288,22 +288,22 @@ def gaze_angle_velocity(interpolatedGazeData):
                 #print('Angular distance', ang_dist)
                 gaze_data['angular_distance'] = ang_dist
 
-                prev_gaze = interpolatedGazeData[window_1]
-                next_gaze = interpolatedGazeData[window_2]
+                prev_gaze = interpolated_gaze_data[window_1]
+                next_gaze = interpolated_gaze_data[window_2]
                 time_diff = (next_gaze['system_time_stamp'] / 1000000) - (prev_gaze['system_time_stamp'] / 1000000)
                 if time_diff != 0:
                     velocity = gaze_data['angular_distance'] / time_diff
                     gaze_data['velocity'] = velocity
-    return interpolatedGazeData
+    return interpolated_gaze_data
 
 #this function uses the angle and velocity data to find centroids and calls the function to merge adjacent fixations (filter centroids)
-def find_centroids(angleVelocityData):
+def find_centroids(angle_velocity_data):
     unfiltered_centroids = []
-    for gaze_data in angleVelocityData:
+    for gaze_data in angle_velocity_data:
         try:
             if gaze_data['velocity'] <= velocity_threshold:
-                gaze_data_x = gaze_data['left_gaze_point_on_display_area'][0] * width if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][0] * width
-                gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] * height if dominantEye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1] * height
+                gaze_data_x = gaze_data['left_gaze_point_on_display_area'][0] * width if dominant_eye == 'left' else gaze_data['inter_gaze_point_on_display_area'][0] * width
+                gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] * height if dominant_eye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1] * height
                 if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y))):
                     unfiltered_centroids.append(gaze_data)
                     #print("centroid:", [gaze_data_x, gaze_data_y])
@@ -326,23 +326,23 @@ class CentroidData:
     def time(self):
         return self.end - self.start
     #returns the sum of the x coordinates of the centroid
-    def sumX(self):
-        sumX = 0
+    def sum_x(self):
+        sum_x = 0
         for item in self.x:
-            sumX += item
-        return sumX
+            sum_x += item
+        return sum_x
     #returns the sum of the y coordinates of the centroid
-    def sumY(self):
-        sumY = 0
+    def sum_y(self):
+        sum_y = 0
         for item in self.y:
-            sumY += item
-        return sumY
+            sum_y += item
+        return sum_y
     #returns the average [x,y] coordinates of the centroid in pixels
     def coords(self):
-        return [self.sumX()/len(self.x)*width, self.sumY()/len(self.y)*height]
+        return [self.sum_x()/len(self.x)*width, self.sum_y()/len(self.y)*height]
 
 #This function gets the point on the gaze display for any given gaze data point
-def getPointDomEye(point):
+def get_point_dom_eye(point):
     centroid_x, centroid_y, z = None, None, None
     if point['selected_eye'] == 'left':
         centroid_x = point['left_gaze_point_on_display_area'][0]
@@ -359,16 +359,16 @@ def getPointDomEye(point):
     return (centroid_x, centroid_y, z)
 
 #This function converts a gaze data point to a CentroidData object
-def gazeTupleToCentroidData(gazeTuple):
-    x, y, z = getPointDomEye(gazeTuple)
-    return CentroidData([gazeTuple['index']], gazeTuple['device_time_stamp'], gazeTuple['device_time_stamp'], [x], [y], z)    
+def gaze_tuple_to_centroid_data(gaze_tuple):
+    x, y, z = get_point_dom_eye(gaze_tuple)
+    return CentroidData([gaze_tuple['index']], gaze_tuple['device_time_stamp'], gaze_tuple['device_time_stamp'], [x], [y], z)    
 
 #this function merges adjacent fixations using the maximum time and angle between fixations
 def filter_centroids(unfiltered_centroids):
     #convert unfiltered data to CentroidData objects
     intermediary_centroids = []
     for centroid in unfiltered_centroids:
-        intermediary_centroids.append(gazeTupleToCentroidData(centroid))
+        intermediary_centroids.append(gaze_tuple_to_centroid_data(centroid))
 
     filtered_centroids = []
     i = 1
@@ -400,14 +400,14 @@ def filter_centroids(unfiltered_centroids):
             centroid_to_add = centroid
         i += 1
     for value in filtered_centroids:
-        coordsx, coordsy = value.coords()
-        centroids_x.append(coordsx)
-        centroids_y.append(coordsy)
+        coords_x, coords_y = value.coords()
+        centroids_x.append(coords_x)
+        centroids_y.append(coords_y)
     return list(filtered_centroids)
 
 #calls the interpolateData, find_points_in_window, and gaze_angle functions.
 #uses this data in calculate_velocity and filters the points to centroids, which are then merged. 
-def apply_ivt_filter(dominantEye):
+def apply_ivt_filter():
     interpolatedGazeData = []#interpolateData(dominantEye)
     pointsData = find_points_in_window(interpolatedGazeData)
     angleVelocityData = gaze_angle_velocity(pointsData)
@@ -509,13 +509,13 @@ def graph2(x1, y1, x2, y2, title1, title2, image_path):
     plt.show()
 
 #Plots the 3D trackbox coordinate data 
-def plot_trackbox_data(interpolatedData, title, origin, origin2):
+def plot_trackbox_data(interpolated_data, title, origin, origin2):
     # Create a 3D plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     mx, my, mz, intx, inty, intz = [], [], [], [], [], []
-    for gaze_data in interpolatedData:
+    for gaze_data in interpolated_data:
         tempx2, tempy2, tempz2 = gaze_data[origin]
         if not np.isnan(tempx2) and not np.isnan(tempy2) and not np.isnan(tempz2):
             mx.append(tempx2)
@@ -565,14 +565,14 @@ def flip_y(cen_y):
         newList.append(height - y)
     return newList
 
-def convex_hull_plot(centroidData, title, image_path):
+def convex_hull_plot(centroid_data, title, image_path):
     convex_list = []
     plot_number = 1  # Counter for plot numbers
 
     # Load the image
     img = mpimg.imread(image_path)
 
-    for centroid in centroidData:
+    for centroid in centroid_data:
         x_adj = [value * width for value in centroid.x]
         y = [value * height for value in centroid.y]
         y_adj = flip_y(y)
@@ -626,14 +626,14 @@ def check_in_bounds(x, y):
             #print(x, y)
             print(name)
 
-interpolatedData, centroidData = [], []
+interpolated_data, centroid_data = [], []
 def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
     #gaze_deque_interpolation.next(2)
     #print(gaze_deque_interpolation)
     run_eyetracker(3)
     #append_pixel_data()
-    global interpolatedData, centroidData
+    global interpolated_data, centroid_data
     write_to_csv(gaze_data_list)
     #interpolatedData, centroidData = apply_ivt_filter(dominantEye)
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
