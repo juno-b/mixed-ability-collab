@@ -5,14 +5,22 @@ This is *not* a saccade classification algorithm/ I-VT classification filter
 Based on Olsen (2012) The Tobii I-VT Fixation Filter accessed from http://www.vinis.co.kr/ivt_filter.pdf
 Tested with the Tobii Pro Fusion eye tracker
 
-@author Juno Bartsch in collaboration with Andrew Begel and Joon Jang at the Carnegie Mellon University VariAbility Lab
-Portions of the code modified from https://github.com/Yejining/I-VTFilter
-Last modified June 2023
+@author Juno Bartsch in collaboration with Andrew Begel and JiWoong (Joon) Jang at the Carnegie Mellon University VariAbility Lab
+Portions of the code related to vector algebra modified from https://github.com/Yejining/I-VTFilter
+Last modified July 2023
 
 Modifications:
 Instead of using left, right, average, or strict average eye selection, this code uses the participant's dominant eye
 If this data is not available, it will look for the other eye and then for interpolated data (which is created only
 in the absence of data from either eye).
+
+This code uses a custom CentroidData class to hold centroid points. Some of the filter parameters may be
+adjusted from the I-VT specification, but the default values are included in the comments.
+
+There are also a plethora of plotting functions included in this code but not called in the main function.
+These were used for testing purposes and can be used to visualize the data and the filter's performance.
+
+Calibration code modified from the Tobii Pro SDK sample code at https://developer.tobiipro.com/python/python-sdk-reference-guide.html
 
 """
 
@@ -30,6 +38,9 @@ from Point23D import get_angular_distance
 import sys
 from getDom import DomObjectRetriever, setCoords
 import matplotlib.image as mpimg
+from collections import deque
+import pygame
+from pygame.locals import *
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -62,6 +73,8 @@ window_size_seconds = 0.01    # maximum time on either side of the spanning wind
 gaze_data_list, left_x, left_y, right_x, right_y, inter_x, inter_y, centroids_x, centroids_y = [], [], [], [], [], [], [], [], []
 unfiltered_centroids_x, unfiltered_centroids_y = [], []
 global_gaze_index, num_values_to_interpolate, prev_valid_point, prev_valid_time, prev_valid_idx, flag_interpolation = 0, 0, None, -1, -1, False
+angle_velocity_deque = deque()
+av_deque_maxlen = math.floor(FREQUENCY * window_size_seconds * 2)
 
 #Switch based on the dominant eye of the participant
 dominant_eye = 'left'
@@ -147,14 +160,13 @@ def check_interpolation(gaze_data):
     if(not time_check):
         flag_interpolation = False
     if(not math.isnan(gaze_data[selected_poda][0])):
-        if time_check:
-            if prev_valid_point is not None:
-                flag_interpolation = True
-                #indices are used to specify where the helper function should interpolate data
-                idx = gaze_data['index']
-                if (idx-prev_valid_idx>1):
-                    interpolate_gaze_data(prev_valid_idx, idx+1)
-                    flag_interpolation = False
+        if time_check and prev_valid_point is not None:
+            flag_interpolation = True
+            #indices are used to specify where the helper function should interpolate data
+            idx = gaze_data['index']
+            if (idx-prev_valid_idx>1):
+                interpolate_gaze_data(prev_valid_idx, idx+1)
+                flag_interpolation = False
         #set the previous valid point whenever a valid point is discovered
         prev_valid_point = gaze_data
         prev_valid_time = timestamp
@@ -166,6 +178,75 @@ def gaze_data_callback(gaze_data):
     gaze_data_list.append(append_pixel_data(gaze_data))
     #check if interpolation needs to happen for this data point
     check_interpolation(gaze_data)
+    if(len(angle_velocity_deque) > av_deque_maxlen):
+        angle_velocity_deque.popleft()
+        points_data = find_points_in_window(angle_velocity_deque)
+        gaze_angle_velocity(points_data)
+    #centroid_data = find_centroids()
+def calibrate_eyetracker():
+    calibration = tr.ScreenBasedCalibration(eyetracker)
+
+    # Enter calibration mode.
+    calibration.enter_calibration_mode()
+    print("Entered calibration mode for eye tracker with serial number {0}.".format(eyetracker.serial_number))
+
+    # Define the points on screen we should calibrate at.
+    # The coordinates are normalized, i.e. (0.0, 0.0) is the upper left corner and (1.0, 1.0) is the lower right corner.
+    points_to_calibrate = [(0.5, 0.5), (0.1, 0.1), (0.1, 0.9), (0.9, 0.1), (0.9, 0.9)]
+
+    #initialize pygame
+    pygame.init()
+    screen = pygame.display.set_mode((width, height))
+
+    for point in points_to_calibrate:
+        # Clear the screen
+        screen.fill((0, 0, 0))
+
+        # Draw a circle at the calibration point
+        circle_radius = 15
+        circle_color = (255, 255, 255)  # Red
+        circle_pos = (int(point[0] * width), int(point[1] * height))
+        pygame.draw.circle(screen, circle_color, circle_pos, circle_radius)
+
+        # Update the display
+        pygame.display.flip()
+
+        print("Show a point on screen at {0}.".format(point))
+
+        # Wait a little for the user to focus.
+        time.sleep(1.75)
+
+        print("Collecting data at {0}.".format(point))
+        if calibration.collect_data(point[0], point[1]) != tr.CALIBRATION_STATUS_SUCCESS:
+            # Try again if it didn't go well the first time.
+            # Not all eye tracker models will fail at this point but instead fail on ComputeAndApply.
+            calibration.collect_data(point[0], point[1])
+
+    print("Computing and applying calibration.")
+    calibration_result = calibration.compute_and_apply()
+    print("Compute and apply returned {0} and collected at {1} points.".format(calibration_result.status, len(calibration_result.calibration_points)))
+
+    # Analyze the data and maybe remove points that weren't good.
+    #recalibrate_point = (0.1, 0.1)
+    #print("Removing calibration point at {0}.".format(recalibrate_point))
+    #calibration.discard_data(recalibrate_point[0], recalibrate_point[1])
+
+    # Redo collection at the discarded point.
+    #print("Show a point on screen at {0}.".format(recalibrate_point))
+    #calibration.collect_data(recalibrate_point[0], recalibrate_point[1])
+
+    # Clean up the pygame resources
+    pygame.quit()
+
+    # Compute and apply again.
+    print("Computing and applying calibration.")
+    calibration_result = calibration.compute_and_apply()
+    print("Compute and apply returned {0} and collected at {1} points.".format(calibration_result.status, len(calibration_result.calibration_points)))
+
+    # The calibration is done. Leave calibration mode.
+    calibration.leave_calibration_mode()
+    print("Left calibration mode.")
+
 
 #This function opens te eye tracker for the specified duration and then closes the connection
 def run_eyetracker(duration):
@@ -193,12 +274,13 @@ def append_pixel_data(gaze_data):
         gaze_data['left_gaze_point_on_display_area'] = [lx, ly]
         if dominant_eye == 'left':
             gaze_data['selected_eye'] = dominant_eye
+    return gaze_data
 
 #This function writes data to a csv file. Additional data column header values should be added to headers/headers2.extend as necessary
 def write_to_csv(data_to_write):#, centroid_data):
     #main data csv
     headers = list(data_to_write[1].keys())
-    headers.extend(['inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system'])#), 'angular_distance', 'velocity'])
+    headers.extend(['inter_gaze_point_on_display_area', 'inter_gaze_origin_validity', 'inter_gaze_origin_in_trackbox_coordinate_system', 'inter_gaze_origin_in_user_coordinate_system', 'angular_distance', 'velocity'])
     with open('output.csv', 'w', newline = '') as file:
         writer = csv.DictWriter(file, fieldnames=headers)
         writer.writeheader()
@@ -248,7 +330,7 @@ def find_points_in_window(gaze_points):
     return gaze_points
 
 #gets the positions in the user coordinate system and on the screen for any data point, including interpolated data
-def get_user_screen_pos(gaze_data):
+'''def get_user_screen_pos(gaze_data):
     user_pos, screen_pos = None, None
     #determine x, y, and z in the coordinate system and the user's gaze on the display as tuples
     if dominant_eye == 'left':
@@ -265,36 +347,35 @@ def get_user_screen_pos(gaze_data):
         elif gaze_data['inter_gaze_origin_validity'] == 1:
             user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
             screen_pos = gaze_data['inter_gaze_point_on_display_area']
-    return user_pos, screen_pos
+    return user_pos, screen_pos'''
 
 #this function finds the gaze angle for the points within the window
-def gaze_angle_velocity(interpolated_gaze_data):
-    for i, gaze_data in enumerate(interpolated_gaze_data):
-        prev_point_user, prev_point_screen, next_point_user, next_point_screen, window_1, window_2 = None, None, None, None, None, None
-        user_pos, screen_pos = get_user_screen_pos(gaze_data)
+def gaze_angle_velocity():
+    global gaze_data_list
+
+    for gaze_data in gaze_data_list:
+        prev_point_screen, next_point_screen, window_1, window_2 = None, None, None, None, None, None
+        user_pos = selected_goucs[gaze_data['index']]
         try:
             window_1 = gaze_data['window_1']
             window_2 = gaze_data['window_2']
         except KeyError:
             continue
         if((not math.isnan(window_1)) & (not math.isnan(window_2)) & (user_pos is not None)):
-            prev_point_user, prev_point_screen = get_user_screen_pos(interpolated_gaze_data[window_1])
-            next_point_user, next_point_screen = get_user_screen_pos(interpolated_gaze_data[window_2])
+            prev_point_screen = selected_poda[window_1][1]
+            next_point_screen = selected_poda[window_2][1]
             if((prev_point_screen is not None) and (next_point_screen is not None)):
                 user_origin = Point3D(user_pos[0], user_pos[1], user_pos[2])
                 prev_point = Point3D(prev_point_screen[0]*width, prev_point_screen[1]*height, user_pos[2])
                 next_point = Point3D(next_point_screen[0]*width, next_point_screen[1]*height, user_pos[2])
                 ang_dist = get_angular_distance(user_origin, prev_point, next_point)
-                #print('Angular distance', ang_dist)
                 gaze_data['angular_distance'] = ang_dist
-
-                prev_gaze = interpolated_gaze_data[window_1]
-                next_gaze = interpolated_gaze_data[window_2]
+                prev_gaze = gaze_data_list[window_1]
+                next_gaze = gaze_data_list[window_2]
                 time_diff = (next_gaze['system_time_stamp'] / 1000000) - (prev_gaze['system_time_stamp'] / 1000000)
                 if time_diff != 0:
                     velocity = gaze_data['angular_distance'] / time_diff
                     gaze_data['velocity'] = velocity
-    return interpolated_gaze_data
 
 #this function uses the angle and velocity data to find centroids and calls the function to merge adjacent fixations (filter centroids)
 def find_centroids(angle_velocity_data):
@@ -631,9 +712,18 @@ def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
     #gaze_deque_interpolation.next(2)
     #print(gaze_deque_interpolation)
+    #calibrate_eyetracker()
     run_eyetracker(3)
     #append_pixel_data()
-    global interpolated_data, centroid_data
+    global interpolated_data, centroid_data, left_x, left_y, right_x, right_y, inter_x, inter_y
+    left_x = [gaze_data['left_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list]
+    left_y = [gaze_data['left_gaze_point_on_display_area'][1] for gaze_data in gaze_data_list]
+    right_x = [gaze_data['right_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list]
+    right_y = [gaze_data['right_gaze_point_on_display_area'][1] for gaze_data in gaze_data_list]
+    inter_x = [gaze_data['inter_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list if 'inter_gaze_point_on_display_area' in gaze_data]
+    inter_y = [gaze_data['inter_gaze_point_on_display_area'][1] for gaze_data in gaze_data_list if 'inter_gaze_point_on_display_area' in gaze_data]
+    left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
+    draw_unfiltered('Unfiltered', 'images/test.png')
     write_to_csv(gaze_data_list)
     #interpolatedData, centroidData = apply_ivt_filter(dominantEye)
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
@@ -655,6 +745,7 @@ for i, x in enumerate(centroids_x):
         check_in_bounds(x, abs(1200-centroids_y[i]))'''
 
 run_live()
+
 #TASKS
 #get additional data from the tobii sdk struct
 
