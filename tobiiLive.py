@@ -187,12 +187,11 @@ def gaze_data_callback(gaze_data):
         gaze_angle_velocity(points_data)
     centroids_to_add = find_centroids(points_data)
     for centroid in centroids_to_add:
-        print('live interpolation of', centroid.id)
+        #print('live interpolation of', centroid.id)
         if centroid.id[0] not in centroid_ids:
             centroid_data.append(centroid)
             centroid_ids.add(centroid.id[0])
             
-
 #This function implements a custom calibration sequence for the eye tracker
 def calibrate_eyetracker():
     calibration = tr.ScreenBasedCalibration(eyetracker)
@@ -308,26 +307,6 @@ def find_points_in_window(gaze_points):
             else:
                 break   
     return gaze_points
-
-#gets the positions in the user coordinate system and on the screen for any data point, including interpolated data
-'''def get_user_screen_pos(gaze_data):
-    user_pos, screen_pos = None, None
-    #determine x, y, and z in the coordinate system and the user's gaze on the display as tuples
-    if dominant_eye == 'left':
-        if gaze_data['left_gaze_origin_validity'] == 1:
-            user_pos = gaze_data['left_gaze_origin_in_user_coordinate_system']
-            screen_pos = gaze_data['left_gaze_point_on_display_area']
-        elif gaze_data['inter_gaze_origin_validity'] == 1:
-            user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
-            screen_pos = gaze_data['inter_gaze_point_on_display_area']
-    else:
-        if gaze_data['right_gaze_origin_validity'] == 1:
-            user_pos = gaze_data['right_gaze_origin_in_user_coordinate_system']
-            screen_pos = gaze_data['right_gaze_point_on_display_area']
-        elif gaze_data['inter_gaze_origin_validity'] == 1:
-            user_pos = gaze_data['inter_gaze_origin_in_user_coordinate_system']
-            screen_pos = gaze_data['inter_gaze_point_on_display_area']
-    return user_pos, screen_pos'''
 
 #this function finds the gaze angle for the points within the window
 def gaze_angle_velocity(points_data):
@@ -540,7 +519,12 @@ def update(filtered_data, frame):
     plt.show()
 
 #This is a basic graphing function using the x and y data and a title
-def graph(x, y, title):
+def graph(x, y, title, image_path):
+    # Load the image
+    img = mpimg.imread(image_path)
+    # Plotting with the image as the background
+    fig, ax = plt.subplots()
+    ax.imshow(img, extent=[0, width, 0, height])
     plt.scatter(x, y, color='blue', label=title)
     # Set the x and y limits
     plt.xlim(0, width)
@@ -548,7 +532,7 @@ def graph(x, y, title):
     # Add labels and legend
     plt.xlabel('X')
     plt.ylabel('Y')
-    plt.legend()
+    #plt.legend()
     plt.title(title)
     #plot the function
     plt.show()
@@ -557,7 +541,7 @@ def graph(x, y, title):
 def graph2(x1, y1, x2, y2, title1, title2, image_path):
     # Load the image
     img = mpimg.imread(image_path)
-    # Plotting convex hulls with the image as the background
+    # Plotting with the image as the background
     fig, ax = plt.subplots()
     ax.imshow(img, extent=[0, width, 0, height])
     plt.scatter(x1, y1, color='blue', label=title1)
@@ -713,36 +697,20 @@ def run_live():
         centroids_x.append(coords_x)
         centroids_y.append(coords_y)
     newY = flip_y(centroids_y)
-    graph(centroids_x, newY, 'Unfiltered Centroids')
+    graph(centroids_x, newY, 'Centroids', 'images/test.png')
     write_to_csv(gaze_data_list, centroid_data)
     #interpolatedData, centroidData = apply_ivt_filter(dominantEye)
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
-'''
-newY = flip_y(centroids_y)
-newuY = flip_y(unfiltered_centroids_y)
-graph2(unfiltered_centroids_x, newuY, centroids_x, newY, 'Unfiltered Centroids', 'Filtered Centroids', 'images/test.png')
-convex_list = convex_hull_plot(centroidData, 'Convex Hull', 'images/test.png')
-write_to_csv(interpolatedData, centroidData)
-
-retriever = DomObjectRetriever()
-for i, x in enumerate(centroids_x):
-    if x is not None:
-        setCoords(x, centroids_y[i])
-        root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
-        print(topmost_dom_object)
-        check_in_bounds(x, abs(1200-centroids_y[i]))'''
+def dom_obs():
+    retriever = DomObjectRetriever()
+    for i, x in enumerate(centroids_x):
+        if x is not None:
+            setCoords(x, centroids_y[i])
+            root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
+            print(topmost_dom_object)
+            check_in_bounds(x, abs(1200-centroids_y[i]))
 
 run_live()
-
-#TASKS
-#get additional data from the tobii sdk struct
-
-#live vector IVT filter
-
-#week 3 task- investigate gaps in coverage e.g. edges or corners of the screen
-
-#accessibility DOM for screen readers
-#bounding boxes for elements, search the hierarchy looking for the x y location and report that
-#example applications: Chrome, Edge, Visual Studio
+dom_obs()
