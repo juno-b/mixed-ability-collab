@@ -30,8 +30,6 @@ from Point23D import get_angular_distance
 import sys
 from getDom import DomObjectRetriever, setCoords
 import matplotlib.image as mpimg
-from collections import deque
-from scipy.interpolate import interp1d
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -225,10 +223,6 @@ def write_to_csv(data_to_write):#, centroid_data):
                 'y_list': y_list,
                 'origin': centroid.origin
             })'''
-
-def interpolateLiveData():
-    window_size = math.floor(maximum_interpolation_time_micro / 1000000 * FREQUENCY)
-    print(window_size)
 
 #adds the index of the point within the window furthest before (window_1) and after (window_2) each gaze point
 def find_points_in_window(gaze_points):
