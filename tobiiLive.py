@@ -50,7 +50,7 @@ if len(sys.argv) > 1:
     angle_cap = float(sys.argv[1])
 else:
     # default from I-VT specification is .5
-    angle_cap = 0.65
+    angle_cap = 0.5#0.65
 
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
@@ -74,7 +74,7 @@ window_size_seconds = 0.01    # maximum time on either side of the spanning wind
 gaze_data_list, left_x, left_y, right_x, right_y, inter_x, inter_y, centroids_x, centroids_y = [], [], [], [], [], [], [], [], []
 unfiltered_centroids_x, unfiltered_centroids_y = [], []
 global_gaze_index, num_values_to_interpolate, prev_valid_point, prev_valid_time, prev_valid_idx, flag_interpolation = 0, 0, None, -1, -1, False
-angle_velocity_deque, centroid_data, centroid_ids = deque(), [], set()
+angle_velocity_deque, centroid_data, centroid_ids, prev_centroid = deque(), [], set(), None
 av_deque_maxlen = math.floor(FREQUENCY * window_size_seconds * 2)
 
 #Switch based on the dominant eye of the participant
@@ -188,9 +188,7 @@ def gaze_data_callback(gaze_data):
     centroids_to_add = find_centroids(points_data)
     for centroid in centroids_to_add:
         #print('live interpolation of', centroid.id)
-        if centroid.id[0] not in centroid_ids:
-            centroid_data.append(centroid)
-            centroid_ids.add(centroid.id[0])
+        centroid_data.append(centroid)
             
 #This function implements a custom calibration sequence for the eye tracker
 def calibrate_eyetracker():
@@ -344,17 +342,22 @@ def find_centroids(angle_velocity_data):
     unfiltered_centroids = []
     for gaze_data in angle_velocity_data:
         try:
-            if gaze_data['velocity'] <= velocity_threshold:
+            vel = gaze_data['velocity']
+            if (vel != 0) & (vel <= velocity_threshold):
                 gaze_data_x = gaze_data['left_gaze_point_on_display_area'][0] if dominant_eye == 'left' else gaze_data['inter_gaze_point_on_display_area'][0]
                 gaze_data_y = gaze_data['left_gaze_point_on_display_area'][1] if dominant_eye == 'left' else gaze_data['inter_gaze_point_on_display_area'][1]
-                if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y))):
+                gaze_id = gaze_data['index']
+                if((not math.isnan(gaze_data_x)) & (not math.isnan(gaze_data_y)) & (gaze_id not in centroid_ids)):
                     unfiltered_centroids.append(gaze_data)
-                    #print("centroid:", [gaze_data_x, gaze_data_y])
                     unfiltered_centroids_x.append(gaze_data_x)
                     unfiltered_centroids_y.append(gaze_data_y)
+                    centroid_ids.add(gaze_id)
         except KeyError:
             continue
-    return filter_centroids(unfiltered_centroids)
+    if(len(unfiltered_centroids) > 0):
+        return filter_centroids(unfiltered_centroids)
+    else:
+        return []
 
 #This class holds centroid data and contains functions to access time/coordinate data
 class CentroidData:
@@ -392,39 +395,40 @@ def gaze_tuple_to_centroid_data(gaze_tuple):
 
 #this function merges adjacent fixations using the maximum time and angle between fixations
 def filter_centroids(unfiltered_centroids):
+    global prev_centroid
     #convert unfiltered data to CentroidData objects
     intermediary_centroids = []
     for centroid in unfiltered_centroids:
         intermediary_centroids.append(gaze_tuple_to_centroid_data(centroid))
-
+    if prev_centroid is None:
+        prev_centroid = intermediary_centroids[0]
     filtered_centroids = []
-    i = 1
-    centroid_to_add = intermediary_centroids[0]
+    i = 0
     while i < len(intermediary_centroids):
         # check if the current point is within the maximum time and angle between fixations
         centroid = intermediary_centroids[i]
-        prev_centroid_time = centroid_to_add.end
+        prev_centroid_time = prev_centroid.end
         centroid_time = centroid.start
         if abs(centroid_time - prev_centroid_time) < maximum_time_between_fixations:
             # calculate angle between the last sample in the first fixation and the first sample in the second fixation
-            origin = Point3D(centroid_to_add.origin[0], centroid_to_add.origin[1], centroid_to_add.origin[2])
-            p1x, p1y = centroid_to_add.coords()
-            point1 = Point3D(p1x, p1y, centroid_to_add.origin[2])
+            origin = Point3D(prev_centroid.origin[0], prev_centroid.origin[1], prev_centroid.origin[2])
+            p1x, p1y = prev_centroid.coords()
+            point1 = Point3D(p1x, p1y, prev_centroid.origin[2])
             p2x, p2y = centroid.coords()
             point2 = Point3D(p2x, p2y, centroid.origin[2])
             angle = get_angular_distance(origin, point1, point2)
             if angle < angle_cap : 
                 # merge to centroid to add
-                centroid_to_add.id += centroid.id
-                centroid_to_add.end = centroid.end
-                centroid_to_add.x += centroid.x
-                centroid_to_add.y += centroid.y
+                prev_centroid.id += centroid.id
+                prev_centroid.end = centroid.end
+                prev_centroid.x += centroid.x
+                prev_centroid.y += centroid.y
             else:
-                filtered_centroids.append(centroid_to_add)
-                centroid_to_add = centroid
+                filtered_centroids.append(prev_centroid)
+                prev_centroid = centroid
         else:
-            filtered_centroids.append(centroid_to_add)
-            centroid_to_add = centroid
+            filtered_centroids.append(prev_centroid)
+            prev_centroid = centroid
         i += 1
     return list(filtered_centroids)
 
@@ -675,7 +679,6 @@ def check_in_bounds(x, y):
             #print(x, y)
             print(name)
 
-interpolated_data, centroid_data = [], []
 def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
     #gaze_deque_interpolation.next(2)
@@ -683,7 +686,7 @@ def run_live():
     #calibrate_eyetracker()
     run_eyetracker(5)
     #append_pixel_data()
-    global interpolated_data, centroid_data, left_x, left_y, right_x, right_y, inter_x, inter_y
+    global centroid_data, left_x, left_y, right_x, right_y, inter_x, inter_y
     left_x = [gaze_data['left_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list]
     left_y = [gaze_data['left_gaze_point_on_display_area'][1] for gaze_data in gaze_data_list]
     right_x = [gaze_data['right_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list]
@@ -698,6 +701,7 @@ def run_live():
         centroids_y.append(coords_y)
     newY = flip_y(centroids_y)
     graph(centroids_x, newY, 'Centroids', 'images/test.png')
+    convex_hull_plot(centroid_data, 'Convex Hull', 'images/test.png')
     write_to_csv(gaze_data_list, centroid_data)
     #interpolatedData, centroidData = apply_ivt_filter(dominantEye)
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
