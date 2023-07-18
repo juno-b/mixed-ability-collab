@@ -42,6 +42,7 @@ import matplotlib.image as mpimg
 from collections import deque
 import pygame
 from pygame.locals import *
+import socket
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -76,6 +77,7 @@ unfiltered_centroids_x, unfiltered_centroids_y = [], []
 global_gaze_index, num_values_to_interpolate, prev_valid_point, prev_valid_time, prev_valid_idx, flag_interpolation = 0, 0, None, -1, -1, False
 angle_velocity_deque, centroid_data, centroid_ids, prev_centroid = deque(), [], set(), None
 av_deque_maxlen = math.floor(FREQUENCY * window_size_seconds * 2)
+retriever = DomObjectRetriever()
 
 #Switch based on the dominant eye of the participant
 dominant_eye = 'left'
@@ -175,7 +177,7 @@ def check_interpolation(gaze_data):
 
 #This callback function adds gaze data from the eye tracker to the global gaze_data_list and interpolates the data live
 def gaze_data_callback(gaze_data):
-    global centroid_data
+    global centroid_data, retriever
     #append the gaze data to the list
     gaze_data_list.append(append_pixel_data(gaze_data))
     #check if interpolation needs to happen for this data point
@@ -187,7 +189,15 @@ def gaze_data_callback(gaze_data):
         gaze_angle_velocity(points_data)
     centroids_to_add = find_centroids(points_data)
     for centroid in centroids_to_add:
-        #print('live interpolation of', centroid.id)
+        #get and print the DOM object/AOI of relevance
+        x, y = centroid.coords()
+        y = abs(y - height)
+        setCoords(x, y)
+        root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, y)
+        aoi = check_in_bounds(x, y)
+        #append the centroid with associated dom and aoi
+        centroid.tdo = topmost_dom_object
+        centroid.aoi = aoi
         centroid_data.append(centroid)
             
 #This function implements a custom calibration sequence for the eye tracker
@@ -368,6 +378,8 @@ class CentroidData:
         self.x = x
         self.y = y
         self.origin = z
+        self.tdo = None
+        self.aoi = None
     #returns the difference in start and end time of the centroid
     def time(self):
         return self.end - self.start
@@ -678,6 +690,7 @@ def check_in_bounds(x, y):
         if is_within_boundary(x, y, aoi):
             #print(x, y)
             print(name)
+            return name
 
 def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
@@ -707,14 +720,38 @@ def run_live():
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
-def dom_obs():
-    retriever = DomObjectRetriever()
-    for i, x in enumerate(centroids_x):
-        if x is not None:
-            setCoords(x, centroids_y[i])
-            root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, centroids_y[i])
-            print(topmost_dom_object)
-            check_in_bounds(x, abs(1200-centroids_y[i]))
-
 run_live()
-dom_obs()
+#serv()
+
+def serv():
+    # Set up the server
+    HOST = 'localhost'  # The server's hostname or IP address
+    PORT = 12345  # The port used by the server
+
+    # Create a socket object
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Bind the socket to a specific address and port
+    server_socket.bind((HOST, PORT))
+
+    # Listen for incoming connections
+    server_socket.listen()
+
+    print('Server is listening on {}:{}'.format(HOST, PORT))
+
+    # Accept a client connection
+    client_socket, client_address = server_socket.accept()
+    print('Connected to client:', client_address)
+
+    # Send eye tracking data to the client
+    centroids = [(1, 2), (3, 4), (5, 6)]  # Replace with your actual centroid data
+    for centroid in centroids:
+        # Convert the centroid data to a string
+        data = '{} {}'.format(centroid[0], centroid[1])
+
+        # Send the data to the client
+        client_socket.sendall(data.encode())
+
+    # Close the connection
+    client_socket.close()
+    server_socket.close()
