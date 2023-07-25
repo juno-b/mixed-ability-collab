@@ -788,13 +788,13 @@ def serv4():
     app = Flask(__name__)
 
     # Route to serve the webpage
-    @app.route('/')
+    
     def serve_webpage():
         with open('web.html', 'r') as file:
             return file.read()
 
     # Route to handle the data received from the webpage
-    @app.route('/highlight', methods=['GET'])
+    @app.route('/')
     def highlight_screen():
         data = {
             'x': 100,
@@ -842,3 +842,7 @@ serv4()
 #1. Open a terminal and start a local server using the command "python -m http.server"
 #2. Open a second terminal and run this file
 #3. Refresh the webpage and the server should run as expected
+
+#send centroids as they are added to the centroid data list
+#get DOM using javascript
+#map to 0,0 at top left of the webpage
