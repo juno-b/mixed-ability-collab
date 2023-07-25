@@ -1,6 +1,8 @@
 """
+This code contains: data collection, filtering/processing, and visualization functions for the Tobii Pro Fusion eye tracker
+It is able to calculate centroids live and write data to a csv file.
 
-This is an implementation of the Tobii I-VT Fixation Filter, which is a fixation classification algorithm
+This code contains an implementation of the Tobii I-VT Fixation Filter, which is a fixation classification algorithm
 This is *not* a saccade classification algorithm/ I-VT classification filter
 Based on Olsen (2012) The Tobii I-VT Fixation Filter accessed from http://www.vinis.co.kr/ivt_filter.pdf
 Tested with the Tobii Pro Fusion eye tracker
@@ -43,6 +45,10 @@ from collections import deque
 import pygame
 from pygame.locals import *
 import socket
+import http.server
+import socketserver
+import json
+import requests
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -692,6 +698,91 @@ def check_in_bounds(x, y):
             print(name)
             return name
 
+def serv():
+    '''# Set up the server
+    HOST = 'localhost'
+    PORT = 80 
+    # Create a socket object, bind it, and listen for connections
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen()
+    print('Server is listening on {}:{}'.format(HOST, PORT))
+
+    # Accept a client connection
+    client_socket, client_address = server_socket.accept()
+    print('Connected to client:', client_address)'''
+
+    # Send eye tracking data to the client
+    centroids = [(1, 2), (3, 4), (5, 6)]  # Replace with your actual centroid data
+    data = json.dumps(centroids)
+    #for centroid in centroids:
+        # Convert the centroid data to a string
+        #data = '{} {}'.format(centroid[0], centroid[1])
+        #print('Sending data:', data)
+        #data_list.append(data)
+
+        # Send the data to the client
+        #client_socket.sendall(data.encode())
+
+    # Create an HTTP connection to the web server
+    conn = http.client.HTTPConnection("127.0.0.1", 8000)
+
+    # Define the HTTP headers and send the data as a POST request
+    headers = {'Content-type': 'application/json'}
+    conn.request("POST", "/eye-tracking-data", data, headers)
+    response = conn.getresponse()
+
+    # Check if the data was successfully sent
+    if response.status == 200:
+        print('Data sent successfully to the web server')
+    else:
+        print('Failed to send data to the web server')
+
+    # Close the HTTP connection and the client connection
+    conn.close()
+    #client_socket.close()
+    #server_socket.close()
+    print('Connection closed')
+
+def serv2():
+    # Set up the server
+    '''HOST = 'localhost'
+    PORT = 8000
+
+    # Create a socket object, bind it, and listen for connections
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen()
+    print('Server is listening on {}:{}'.format(HOST, PORT))
+
+    # Accept a client connection
+    client_socket, client_address = server_socket.accept()
+    print('Connected to client:', client_address)
+
+    # Send eye tracking data to the client
+    centroids = 'centroid data here'#[(1, 2), (3, 4), (5, 6)]  # Replace with your actual centroid data
+    data = json.dumps(centroids)  # Convert centroids to JSON
+
+    # Close the connection to the client
+    client_socket.close()
+    server_socket.close()
+    print('Connection closed')'''
+
+    url = 'http://localhost:8080'
+    headers = {'Content-type': 'application/json'}
+    response = requests.post(url, data='test', headers=headers)
+
+    if response.status_code == 200:
+        print('Data sent successfully to the web server')
+    else:
+        print('Failed to send data to the web server')
+
+def serv3():
+    url = 'http://localhost:8000/'
+    query = {'data': 'test'}
+    res = requests.post(url, data=query)
+    print('res', res.text)
+
 def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
     #gaze_deque_interpolation.next(2)
@@ -720,38 +811,5 @@ def run_live():
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
-run_live()
-#serv()
-
-def serv():
-    # Set up the server
-    HOST = 'localhost'  # The server's hostname or IP address
-    PORT = 12345  # The port used by the server
-
-    # Create a socket object
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # Bind the socket to a specific address and port
-    server_socket.bind((HOST, PORT))
-
-    # Listen for incoming connections
-    server_socket.listen()
-
-    print('Server is listening on {}:{}'.format(HOST, PORT))
-
-    # Accept a client connection
-    client_socket, client_address = server_socket.accept()
-    print('Connected to client:', client_address)
-
-    # Send eye tracking data to the client
-    centroids = [(1, 2), (3, 4), (5, 6)]  # Replace with your actual centroid data
-    for centroid in centroids:
-        # Convert the centroid data to a string
-        data = '{} {}'.format(centroid[0], centroid[1])
-
-        # Send the data to the client
-        client_socket.sendall(data.encode())
-
-    # Close the connection
-    client_socket.close()
-    server_socket.close()
+#run_live()
+serv2()

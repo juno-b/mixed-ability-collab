@@ -10,6 +10,24 @@
 <style>
 html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
 </style>
+<script>
+  // Make an HTTP request to the server using Fetch API
+  fetch('http://localhost:8080')
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok');
+          }
+          return response.text();
+      })
+      .then(eyeData => {
+          // Process the eye tracking data here
+          console.log('Received eye tracking data:', eyeData);
+          //document.getElementById('eyeTrackingData').innerText = eyeData;
+      })
+      .catch(error => {
+          console.error('Failed to get eye tracking data:', error);
+      });
+</script>
 </head>
 <body class="w3-light-grey">
 

@@ -1,4 +1,5 @@
 """
+This code processes data but cannot run live, see tobiiLive for live data processing.
 
 This is an implementation of the Tobii I-VT Fixation Filter, which is a fixation classification algorithm
 This is *not* a saccade classification algorithm/ I-VT classification filter
