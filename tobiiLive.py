@@ -49,6 +49,7 @@ import http.server
 import socketserver
 import json
 import requests
+from flask import Flask, request, jsonify
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -783,6 +784,30 @@ def serv3():
     res = requests.post(url, data=query)
     print('res', res.text)
 
+def serv4():
+    app = Flask(__name__)
+
+    # Route to serve the webpage
+    @app.route('/')
+    def serve_webpage():
+        with open('web.html', 'r') as file:
+            return file.read()
+
+    # Route to handle the data received from the webpage
+    @app.route('/highlight', methods=['GET'])
+    def highlight_screen():
+        data = {
+            'x': 100,
+            'y': 200,
+            'width': 300,
+            'height': 150,
+        }
+        # Send the data to the webpage as a JSON response
+        return jsonify(data)
+
+    if __name__ == '__main__':
+        app.run(host='localhost', port=8000)
+
 def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
     #gaze_deque_interpolation.next(2)
@@ -812,4 +837,8 @@ def run_live():
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
 #run_live()
-serv2()
+serv4()
+#Instructions for running:
+#1. Open a terminal and start a local server using the command "python -m http.server"
+#2. Open a second terminal and run this file
+#3. Refresh the webpage and the server should run as expected

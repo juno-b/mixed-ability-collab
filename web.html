@@ -11,22 +11,19 @@
 html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
 </style>
 <script>
-  // Make an HTTP request to the server using Fetch API
-  fetch('http://localhost:8080')
-      .then(response => {
-          if (!response.ok) {
-              throw new Error('Network response was not ok');
-          }
-          return response.text();
-      })
-      .then(eyeData => {
-          // Process the eye tracking data here
-          console.log('Received eye tracking data:', eyeData);
-          //document.getElementById('eyeTrackingData').innerText = eyeData;
+  // JavaScript code to fetch data from the server and process the response
+  document.addEventListener('DOMContentLoaded', function() {
+    fetch('/highlight') // Use GET instead of POST
+      .then(response => response.json())
+      .then(data => {
+        console.log('Received data from the server:', data);
+        // Add your custom logic here to highlight the region based on the data received
       })
       .catch(error => {
-          console.error('Failed to get eye tracking data:', error);
+        console.error('Error fetching data from the server:', error);
+        // Handle errors if any
       });
+  });
 </script>
 </head>
 <body class="w3-light-grey">
