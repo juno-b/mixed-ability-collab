@@ -85,6 +85,7 @@ global_gaze_index, num_values_to_interpolate, prev_valid_point, prev_valid_time,
 angle_velocity_deque, centroid_data, centroid_ids, prev_centroid = deque(), [], set(), None
 av_deque_maxlen = math.floor(FREQUENCY * window_size_seconds * 2)
 retriever = DomObjectRetriever()
+data_to_send = {"x": height, "y": width}
 
 #Switch based on the dominant eye of the participant
 dominant_eye = 'left'
@@ -184,7 +185,7 @@ def check_interpolation(gaze_data):
 
 #This callback function adds gaze data from the eye tracker to the global gaze_data_list and interpolates the data live
 def gaze_data_callback(gaze_data):
-    global centroid_data, retriever
+    global centroid_data, retriever, data_to_send
     #append the gaze data to the list
     gaze_data_list.append(append_pixel_data(gaze_data))
     #check if interpolation needs to happen for this data point
@@ -195,16 +196,11 @@ def gaze_data_callback(gaze_data):
         points_data = find_points_in_window(angle_velocity_deque)
         gaze_angle_velocity(points_data)
     centroids_to_add = find_centroids(points_data)
+    xta, yta = centroids_to_add[-1].coords()
+    xta, yta = round(xta), round(yta)
+    #print(xta, yta)
+    data_to_send = {"x": xta, "y": yta}
     for centroid in centroids_to_add:
-        #get and print the DOM object/AOI of relevance
-        x, y = centroid.coords()
-        y = abs(y - height)
-        setCoords(x, y)
-        root, dom_objects, topmost_dom_object = retriever.GetTopmostDomObject(x, y)
-        aoi = check_in_bounds(x, y)
-        #append the centroid with associated dom and aoi
-        centroid.tdo = topmost_dom_object
-        centroid.aoi = aoi
         centroid_data.append(centroid)
             
 #This function implements a custom calibration sequence for the eye tracker
@@ -789,27 +785,22 @@ def serv3():
 def serv4():
     app = Flask(__name__)
 
-    test_data = {"x": 100, "y": 200}
     # Route to serve the webpage
     @app.route('/')
     def serve_webpage():
-       return render_template('web.html', data = test_data)
+       return render_template('web.html', data = data_to_send)
 
     # Route to handle the data received from the webpage
     @app.route('/data', methods=['GET'])
     def get_data():
-        return jsonify(test_data)
+        return jsonify(data_to_send)
 
     if __name__ == '__main__':
-        app.run(debug=True)
+        app.run(debug=True, use_reloader=False)
 
 def run_live():
-    #gaze_deque_interpolation.append({"key1": "value1"})
-    #gaze_deque_interpolation.next(2)
-    #print(gaze_deque_interpolation)
     #calibrate_eyetracker()
     run_eyetracker(5)
-    #append_pixel_data()
     global centroid_data, left_x, left_y, right_x, right_y, inter_x, inter_y
     left_x = [gaze_data['left_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list]
     left_y = [gaze_data['left_gaze_point_on_display_area'][1] for gaze_data in gaze_data_list]
@@ -831,8 +822,8 @@ def run_live():
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
-#run_live()
 serv4()
+run_live()
 #Instructions for running:
 #1. Open a terminal and start a local server using the command "python -m http.server"
 #2. Open a second terminal and run this file

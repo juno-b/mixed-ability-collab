@@ -18,7 +18,10 @@ html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
     fetch('/data')
       .then(response => response.json())
       .then(data =>{
-        console.log(data);
+        x = data.x;
+        y = data.y;
+        console.log("XY", x, y);
+        drawBorderAroundElementAt(x, y);
       })
       .catch(error => console.error('Error:', error));
   }
@@ -26,10 +29,10 @@ html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
   // Fetch data initially when the page loads
   window.onload = getData;
 
-  // Set an interval to fetch data every 5 seconds
-  //setInterval(function() {
-    //fetchData();
-  //}, 5000);
+  // Set an interval to fetch data every 1000 ms
+  setInterval(function() {
+    getData();
+  }, 1000);
 
   function drawBorderAroundElementAt(x, y) {
     const element = document.elementFromPoint(x, y);
@@ -45,12 +48,6 @@ html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
     borderElement.style.border = '5px solid red';
     document.body.appendChild(borderElement);
   }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    const x = 500;
-    const y = 500;
-    //drawBorderAroundElementAt(x, y);
-  });
 
 </script>
 </head>

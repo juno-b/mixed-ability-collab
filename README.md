@@ -95,7 +95,7 @@ This is an example of how you may give instructions on setting up your project l
 
 This project is built and tested on a Tobii Pro Fusion eye tracker and a Leap Motion controller.
 
-You will need matplotlib and numpy to run the Python scripts.
+You will need matplotlib, numpy, and Flask to run the Python scripts.
 
 ### Installation
 
