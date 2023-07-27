@@ -49,7 +49,7 @@ import http.server
 import socketserver
 import json
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, jsonify
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -490,17 +490,17 @@ def draw_unfiltered(title, image_path):
     ax.imshow(img, extent=[0, width, 0, height])
     
     # Plot the new scatter plot with the updated data
-    plt.scatter(left_x, left_y, color='blue', label='Left Eye')
-    plt.scatter(right_x, right_y, color='red', label='Right Eye')
-    plt.scatter(inter_x, inter_y, color = 'green', label="Interpolated")
+    plt.scatter(left_x, left_y, facecolor = 'none', edgecolor = 'blue', label = 'Left Eye')
+    plt.scatter(right_x, right_y, facecolor = 'none', edgecolor = 'red', label = 'Right Eye')
+    plt.scatter(inter_x, inter_y, facecolor = 'none', edgecolor = 'green', label = "Interpolated")
 
     # Set the x and y limits
     plt.xlim(0, width)
     plt.ylim(0, height)
 
     # Add labels and legend
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    plt.xlabel('X (pixels)')
+    plt.ylabel('Y (pixels)')
     plt.legend()
     plt.title(title)
 
@@ -548,13 +548,13 @@ def graph(x, y, title, image_path):
     # Plotting with the image as the background
     fig, ax = plt.subplots()
     ax.imshow(img, extent=[0, width, 0, height])
-    plt.scatter(x, y, color='blue', label=title)
+    plt.scatter(x, y, facecolor = 'none', edgecolor = 'blue', label=title)
     # Set the x and y limits
     plt.xlim(0, width)
     plt.ylim(0, height)
     # Add labels and legend
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    plt.xlabel('X (pixels)')
+    plt.ylabel('Y (pixels)')
     #plt.legend()
     plt.title(title)
     #plot the function
@@ -573,8 +573,8 @@ def graph2(x1, y1, x2, y2, title1, title2, image_path):
     plt.xlim(0, width)
     plt.ylim(0, height)
     # Add labels and legend
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    plt.xlabel('X (pixels)')
+    plt.ylabel('Y (pixels)')
     plt.legend()
     plt.title(title1 + " and " + title2)
     # Plot the scatter points
@@ -670,6 +670,8 @@ def convex_hull_plot(centroid_data, title, image_path):
     # Set the x and y limits
     plt.xlim(0, width)
     plt.ylim(0, height)
+    plt.xlabel('X (pixels)')
+    plt.ylabel('Y (pixels)')
     plt.show()
 
     return convex_list
@@ -787,26 +789,19 @@ def serv3():
 def serv4():
     app = Flask(__name__)
 
+    test_data = {"x": 100, "y": 200}
     # Route to serve the webpage
-    
+    @app.route('/')
     def serve_webpage():
-        with open('web.html', 'r') as file:
-            return file.read()
+       return render_template('web.html', data = test_data)
 
     # Route to handle the data received from the webpage
-    @app.route('/')
-    def highlight_screen():
-        data = {
-            'x': 100,
-            'y': 200,
-            'width': 300,
-            'height': 150,
-        }
-        # Send the data to the webpage as a JSON response
-        return jsonify(data)
+    @app.route('/data', methods=['GET'])
+    def get_data():
+        return jsonify(test_data)
 
     if __name__ == '__main__':
-        app.run(host='localhost', port=8000)
+        app.run(debug=True)
 
 def run_live():
     #gaze_deque_interpolation.append({"key1": "value1"})
