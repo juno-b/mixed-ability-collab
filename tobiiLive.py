@@ -786,7 +786,7 @@ def serv3():
     print('res', res.text)
 
 def serv4():
-    global data_to_send
+    data_to_send = {"x": 500, "y": 500}
     app = Flask(__name__)
 
     # Route to serve the webpage
@@ -824,19 +824,20 @@ def run_plots_csv():
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
-thread1 = threading.Thread(target=serv4)
-thread2 = threading.Thread(target=run_eyetracker(5))
+run_eyetracker(5)
+#thread1 = threading.Thread(target=serv4)
+#thread2 = threading.Thread(target=run_eyetracker(5))
 
 # Start the threads
-thread1.start()
-thread2.start()
+#thread1.start()
+#thread2.start()
 
 # Wait for both threads to finish
-thread1.join()
-thread2.join()
+#thread1.join()
+#thread2.join()
 
-print("Both functions have completed.")
-run_plots_csv()
+#print("Both functions have completed.")
+#run_plots_csv()
 #Instructions for running:
 #1. Open a terminal and start a local server using the command "python -m http.server"
 #2. Open a second terminal and run this file

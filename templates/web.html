@@ -33,9 +33,10 @@ html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
 
   // Fetch data initially when the page loads
   window.onload = getData;
+  drawBorderAroundElementAt(500,500);
 
-  // Set an interval to fetch data every 100 ms
-  interval = setInterval(getData, 100);
+  // Set an interval to fetch data every 10000 ms
+  interval = setInterval(getData, 10000);
 
   function drawBorderAroundElementAt(x, y) {
     const element = document.elementFromPoint(x, y);
