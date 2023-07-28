@@ -21,7 +21,12 @@ html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
         x = data.x;
         y = data.y;
         console.log("XY", x, y);
-        drawBorderAroundElementAt(x, y);
+        if (x == -1) {
+          console.log('clearing interval')
+          clearInterval(interval);
+        } else {
+          drawBorderAroundElementAt(x, y);
+        }
       })
       .catch(error => console.error('Error:', error));
   }
@@ -29,10 +34,8 @@ html,body,h1,h2,h3,h4,h5,h6 {font-family: "Roboto", sans-serif}
   // Fetch data initially when the page loads
   window.onload = getData;
 
-  // Set an interval to fetch data every 1000 ms
-  setInterval(function() {
-    getData();
-  }, 1000);
+  // Set an interval to fetch data every 100 ms
+  interval = setInterval(getData, 100);
 
   function drawBorderAroundElementAt(x, y) {
     const element = document.elementFromPoint(x, y);

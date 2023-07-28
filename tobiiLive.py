@@ -50,6 +50,7 @@ import socketserver
 import json
 import requests
 from flask import Flask, render_template, jsonify
+import threading
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -58,7 +59,7 @@ if len(sys.argv) > 1:
     angle_cap = float(sys.argv[1])
 else:
     # default from I-VT specification is .5
-    angle_cap = 0.5#0.65
+    angle_cap = 0.5
 
 #find the eye tracker
 eyetrackers = tr.find_all_eyetrackers()
@@ -198,7 +199,6 @@ def gaze_data_callback(gaze_data):
     centroids_to_add = find_centroids(points_data)
     xta, yta = centroids_to_add[-1].coords()
     xta, yta = round(xta), round(yta)
-    #print(xta, yta)
     data_to_send = {"x": xta, "y": yta}
     for centroid in centroids_to_add:
         centroid_data.append(centroid)
@@ -270,9 +270,12 @@ def calibrate_eyetracker():
 
 #This function opens te eye tracker for the specified duration and then closes the connection
 def run_eyetracker(duration):
+    global data_to_send
     eyetracker.subscribe_to(tr.EYETRACKER_GAZE_DATA, gaze_data_callback, as_dictionary=True)
     time.sleep(duration)
     eyetracker.unsubscribe_from(tr.EYETRACKER_GAZE_DATA, gaze_data_callback)
+    #stop the website from sending get requests
+    data_to_send = {"x": -1, "y": -1}
 
 #This function modifies the gaze data to be in pixels rather than fractional values and adds the helper selected eye variable
 def append_pixel_data(gaze_data):
@@ -783,6 +786,7 @@ def serv3():
     print('res', res.text)
 
 def serv4():
+    global data_to_send
     app = Flask(__name__)
 
     # Route to serve the webpage
@@ -796,11 +800,9 @@ def serv4():
         return jsonify(data_to_send)
 
     if __name__ == '__main__':
-        app.run(debug=True, use_reloader=False)
+        app.run(debug=True, threaded=True)
 
-def run_live():
-    #calibrate_eyetracker()
-    run_eyetracker(5)
+def run_plots_csv():
     global centroid_data, left_x, left_y, right_x, right_y, inter_x, inter_y
     left_x = [gaze_data['left_gaze_point_on_display_area'][0] for gaze_data in gaze_data_list]
     left_y = [gaze_data['left_gaze_point_on_display_area'][1] for gaze_data in gaze_data_list]
@@ -822,8 +824,19 @@ def run_live():
     #left_y, right_y, inter_y = flip_y(left_y), flip_y(right_y), flip_y(inter_y)
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
-serv4()
-run_live()
+thread1 = threading.Thread(target=serv4)
+thread2 = threading.Thread(target=run_eyetracker(5))
+
+# Start the threads
+thread1.start()
+thread2.start()
+
+# Wait for both threads to finish
+thread1.join()
+thread2.join()
+
+print("Both functions have completed.")
+run_plots_csv()
 #Instructions for running:
 #1. Open a terminal and start a local server using the command "python -m http.server"
 #2. Open a second terminal and run this file
