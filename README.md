@@ -1,31 +1,6 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
 <a name="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
-
 <!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-<!--[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]-->
 [![LinkedIn][linkedin-shield]][linkedin-url]
-
-
 
 <!-- PROJECT LOGO -->
 <br />
@@ -37,11 +12,16 @@
 <h3 align="center">Mixed Ability Collaboration</h3>
 
   <p align="center">
-    Description //to be added
+    This repository contains code designed to obtain and filter gaze data and send that to a website.
+    The functions inside the tobiiLive.py file are the most recent versions, tobiiTest was used to develop the eye tracking functions.
+    This code contains: data collection, filtering/processing, and visualization functions for the Tobii Pro Fusion eye tracker.
+    It is able to calculate centroids live, contains a custom calibration function, and can write data to a csv file afterwards.
+    This code contains a Python implementation of the Tobii I-VT Fixation Filter, which is a fixation classification algorithm.
+    There is also a sample webpage, web.html, with Javascript designed to handle live data receiving with a Flask server.
+    For more information, see the full description at the top of the tobiiLive file.
+
   </p>
 </div>
-
-
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -93,13 +73,12 @@ This is an example of how you may give instructions on setting up your project l
 
 ### Prerequisites
 
-This project is built and tested on a Tobii Pro Fusion eye tracker and a Leap Motion controller.
-
-You will need matplotlib, numpy, and Flask to run the Python scripts.
+This project is built and tested on a Tobii Pro Fusion eye tracker.
 
 ### Installation
 
 1. Install the Tobii Pro SDK (tested with v 1.11) [https://developer.tobiipro.com/python/python-sdk-reference-guide.html](https://developer.tobiipro.com/python/python-sdk-reference-guide.html)
+2. Install the necessary packages: matplotlib, numpy, Flask (for the server), pygame (for custom calibration).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -123,7 +102,7 @@ Project Link: [https://github.com/juno-b/mixed-ability-collab](https://github.co
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
-This project would not have been possible without the support and contributions of Yanzi (Veronica) Lin, JiWoon (Joon) Jang, and [Andrew Begel](https://github.com/abegel).
+This project would not have been possible without the support and contributions of [Yanzi (Veronica) Lin](https://github.com/yanziv), [Joon Jang](https://github.com/joonbugs), and [Andrew Begel](https://github.com/abegel).
 
 Created at the Carnegie Mellon University [VariAbility Lab](https://github.com/cmu-variability) during the Summer 2023 REUSE program.
 
