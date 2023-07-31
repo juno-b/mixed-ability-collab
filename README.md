@@ -9,16 +9,10 @@
     <img src="images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">Mixed Ability Collaboration</h3>
+<h3 align="center">GRACE: Gesture and Gaze Recognition for Accessible Collaborative Environments</h3>
 
   <p align="center">
-    This repository contains code designed to obtain and filter gaze data and send that to a website.
-    The functions inside the tobiiLive.py file are the most recent versions, tobiiTest was used to develop the eye tracking functions.
-    This code contains: data collection, filtering/processing, and visualization functions for the Tobii Pro Fusion eye tracker.
-    It is able to calculate centroids live, contains a custom calibration function, and can write data to a csv file afterwards.
-    This code contains a Python implementation of the Tobii I-VT Fixation Filter, which is a fixation classification algorithm.
-    There is also a sample webpage, web.html, with Javascript designed to handle live data receiving with a Flask server.
-    For more information, see the full description at the top of the tobiiLive file.
+    This project is designed to support mixed-ability collaboration between BLV and sighted pairs by conveying information about where someone is referencing on a screen. For example, pointing gestures or saying something like “it’s next to the red box” does not help people who use non-visual ways of accessing information. To solve this problem, we designed a system which will track the gaze and pointing gestures of a sighted collaborator, identify the referenced object (e.g. a paragraph or button), and relay this information to the BLV person’s screen reader. Our goal is to improve collaboration between people of all abilities by improving their communication and reducing their task burden. We also hope to conduct a user study to test the efficacy of our system and add voice recognition. 
 
   </p>
 </div>
@@ -45,26 +39,26 @@
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
 <!--[![Product Name Screen Shot][product-screenshot]](https://example.com)-->
 
-Here's a blank template to get started: To avoid retyping too much info. Do a search and replace with your text editor for the following: `juno-b`, `mixed-ability-collab`, `twitter_handle`, `juno-bartsch-85594a235`, `email_client`, `email`, `Mixed Ability Collaboration`, `project_description`
+  This repository contains code designed to obtain and filter gaze data and send that to a website.
+  The functions inside the tobiiLive.py file are the most recent versions, tobiiTest was used to develop the eye tracking functions.
+  This code contains: data collection, filtering/processing, and visualization functions for the Tobii Pro Fusion eye tracker.
+  It is able to calculate centroids live, contains a custom calibration function, and can write data to a csv file afterwards.
+  This code contains a Python implementation of the Tobii I-VT Fixation Filter, which is a fixation classification algorithm.
+  There is also a sample webpage, web.html, with Javascript designed to handle live data receiving with a Flask server.
+  For more information, see the full description at the top of the tobiiLive file.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 ### Built With
 
 [![Python][Python.org]][Python-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -82,14 +76,12 @@ This project is built and tested on a Tobii Pro Fusion eye tracker.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
 <!-- USAGE EXAMPLES -->
 ## Usage
 
 Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 <!-- CONTACT -->
 ## Contact
