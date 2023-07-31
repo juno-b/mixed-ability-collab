@@ -6,7 +6,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/juno-b/mixed-ability-collab">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+    <img src="images/logo.png" alt="Two people smiling, making two gestures recognized as 'Victory' and 'ILoveYou' within mediapipe." width="80" height="80">
   </a>
 
 <h3 align="center">GRACE: Gesture and Gaze Recognition for Accessible Collaborative Environments</h3>
