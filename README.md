@@ -6,7 +6,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/juno-b/mixed-ability-collab">
-    <img src="images/logo.png" alt="Two people smiling, making two gestures recognized as 'Victory' and 'ILoveYou' within mediapipe." width="80" height="80">
+    <img src="images/logo.png" alt="Two people smiling, making two gestures recognized as 'Victory' and 'ILoveYou' within mediapipe." width="425" height="350">
   </a>
 
 <h3 align="center">GRACE: Gesture and Gaze Recognition for Accessible Collaborative Environments</h3>
@@ -110,7 +110,7 @@ Created at the Carnegie Mellon University [VariAbility Lab](https://github.com/c
 [contributors-shield]: https://img.shields.io/github/contributors/juno-b/mixed-ability-collab.svg?style=for-the-badge
 [contributors-url]: https://github.com/juno-b/mixed-ability-collab/graphs/contributors
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/juno-bartsch-85594a235
+[linkedin-url]: https://linkedin.com/in/juno-Bartsch-85594a235
 [product-screenshot]: images/screenshot.png
 [Python.org]: https://img.shields.io/badge/python-3.10-gray?labelColor=3670a0&style=for-the-badge&logo=python&logoColor=ffdd54
 [Python-url]: https://www.python.org/downloads/release/python-31011/
