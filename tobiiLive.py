@@ -39,18 +39,15 @@ import math
 from Point23D import Point3D
 from Point23D import get_angular_distance
 import sys
-from getDom import DomObjectRetriever, setCoords
+from getDom import DomObjectRetriever
 import matplotlib.image as mpimg
 from collections import deque
 import pygame
 from pygame.locals import *
-import socket
 import http.server
-import socketserver
 import json
 import requests
 from flask import Flask, render_template, jsonify
-import threading
 
 # Set the angle filter amount for the I-VT filter in the filter_centroids fn
 # Check if command-line argument exists
@@ -838,11 +835,7 @@ run_eyetracker(5)
 
 #print("Both functions have completed.")
 #run_plots_csv()
-#Instructions for running:
+#Instructions for running in a local server:
 #1. Open a terminal and start a local server using the command "python -m http.server"
 #2. Open a second terminal and run this file
 #3. Refresh the webpage and the server should run as expected
-
-#send centroids as they are added to the centroid data list
-#get DOM using javascript
-#map to 0,0 at top left of the webpage
