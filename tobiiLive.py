@@ -199,6 +199,7 @@ def gaze_data_callback(gaze_data):
     data_to_send = {"x": xta, "y": yta}
     for centroid in centroids_to_add:
         centroid_data.append(centroid)
+        check_in_bounds(centroid.coords())
             
 #This function implements a custom calibration sequence for the eye tracker
 def calibrate_eyetracker():
@@ -783,7 +784,7 @@ def serv3():
     print('res', res.text)
 
 def serv4():
-    data_to_send = {"x": 500, "y": 500}
+    data_to_send = {"x": 800, "y": 1000}
     app = Flask(__name__)
 
     # Route to serve the webpage
@@ -822,6 +823,8 @@ def run_plots_csv():
     #draw_unfiltered('Unfiltered', 'images/test.png')
 
 run_eyetracker(5)
+run_plots_csv()
+#serv4()
 #thread1 = threading.Thread(target=serv4)
 #thread2 = threading.Thread(target=run_eyetracker(5))
 
